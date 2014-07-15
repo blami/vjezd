@@ -26,35 +26,47 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-""" Ticket Model
-    ============
+""" Regular Hours Model
+    ===================
 """
 
-from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, String, Time, DateTime
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Integer, String, Time
 
 from vjezd.db import Base
 
 
-class Ticket(Base):
-    """ Global configuration option for one or more devices.
+class RegularHours(Base):
+    """ Regular opening hours. Devices will work in time intervals defined by
+        rules in this table.
+
+        If there's overlap in rules the highest identifier (newest rule) wins.
+
+        :ivar id integer:           regular opening hours rule identifier
+        :ivar device string:        device on which the rule applies, None for
+                                    any device
+        :ivar day_of_week integer:  day of week when rule applies:
+                                    0-all days,
+                                    1..7-week days (from Mon to Sun),
+                                    8-work days
+        :ivar time_start Time:      time of interval start
+        :ivar time_end Time:        time of interval end
     """
 
-    __tablename__ = 'tickets'
-    __table_args__ = (
-        {'extend_existing': True})
+    __tablename__ = 'regular_hours'
+    __tableargs__ = (
+        {'extend_existing': True},
+        CheckConstraint('0 <= day_of_week <= 8', name='cc_day_of_week'),
+        CheckConstraint('time_end > time_start', name='cc_time'))
 
     id          = Column(Integer(), primary_key=True)
-    code        = Column(String(240), nullable=False, unique=True)
-    created     = Column(DateTime(), nullable=False, default=datetime.now())
-    created_device = Column(String(16), ForeignKey('devices.id'),
-                        nullable=False)
-    used        = Column(DateTime())
-    used_device = Column(String(16), ForeignKey('devices.id'))
-    validity    = Column(Time(), nullable=False, default='02:00:00')
-    cancelled   = Column(DateTime())
+    device      = Column(String(16), ForeignKey('devices.id'), nullable=True)
+    day_of_week = Column(Integer(), nullable=False)
+    time_start  = Column(Time())
+    time_end    = Column(Time())
+

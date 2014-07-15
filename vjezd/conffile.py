@@ -25,7 +25,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" Configuration
+""" Local Configuration File
+    ************************
+
+    Local configuration file stores any local device-specific configuration
+    such as device identifier, logging settings or database connection
+    settings.
 """
 
 import os
@@ -36,19 +41,15 @@ logger = logging.getLogger(__name__)
 
 from vjezd import APP_DIR, APP_NAME
 
+conffile = configparser.ConfigParser()
 
-config = configparser.ConfigParser()
 
-
-def load_from_file(path=None, append=True):
+def load(path=None):
     """ Load configuration file.
 
-        Configuration files are not merged. This method reads just one of them.
-
         :param str path:                path to the configuration file
-        :param bool append:             append loaded options to registry
-                                        instead of replacing registry
     """
+    logger.debug('Loading local configuration')
 
     if not path:
         # Standard configuration directories, first has the highest priority
@@ -64,45 +65,49 @@ def load_from_file(path=None, append=True):
                 break
 
     # Remove previous configuration
-    if not append:
-        for s in config.sections():
-            config.remove_section(s)
+    if conffile.sections():
+        logger.debug('Removing exisitng configuration file options')
+        for s in conffile.sections():
+            conffile.remove_section(s)
 
     # Read configuration
-    config.read(path)
+    # FIXME handle exceptions
+    conffile.read(path)
+
+    logger.debug('Configuration file successfuly loaded: {}'.format(path))
 
 
-def get(section, option, fallback=None, *, raw=False, vars=None, type=None):
+def get(section, option, fallback=None, type=None):
     """ Get value for given option in fiven section.
     """
 
     # Select appropriate coerce method to the given type
-    method = config.get
+    method = conffile.get
     if type == bool:
-        method = config.getboolean
+        method = conffile.getboolean
     elif type == int:
-        method = config.getint
+        method = conffile.getint
     elif type == float:
-        method = config.getfloat
+        method = conffile.getfloat
 
     # Invoke appropriate method for given type
-    return method(section, option, raw=raw, vars=vars, fallback=fallback)
+    return method(section, option, fallback=fallback)
 
 
-def getbool(section, option, fallback=None, *, raw=False, vars=None):
+def getbool(section, option, fallback=None):
     """ A convenience method which coerces option value to a Boolean value.
     """
-    return get(section, option, fallback, raw=raw, vars=vars, type=bool)
+    return get(section, option, fallback, type=bool)
 
 
-def getint(section, option, fallback=None, *, raw=False, vars=None):
+def getint(section, option, fallback=None):
     """ A convenience method which coerces option value to an Integer value.
     """
-    return get(section, option, fallback, raw=raw, vars=vars, type=int)
+    return get(section, option, fallback, type=int)
 
 
-def getfloat(section, option, fallback=None, *, raw=False, vars=None):
+def getfloat(section, option, fallback=None):
     """ A convenience method which coerces option value to a Float value.
     """
-    return get(section, option, fallback, raw=raw, vars=vars, type=float)
+    return get(section, option, fallback, type=float)
 

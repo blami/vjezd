@@ -27,6 +27,7 @@
 
 
 """ Logging
+    *******
 
     Configuration Options
     ---------------------
@@ -57,10 +58,13 @@ import sys
 import logging
 from logging import StreamHandler, FileHandler, NullHandler
 from logging.handlers import SysLogHandler
+logger = logging.getLogger(__name__)
 
 from vjezd import APP_DIR, APP_NAME
-from vjezd import config
+from vjezd import conffile
 
+# FIXME Setup very early logging that will just save messages and wait for
+# log configuration will be fully read (and then flush them)
 
 # Log message and date format
 FORMAT='%(asctime)s %(levelname)s [%(name)s %(threadName)s ' \
@@ -68,19 +72,28 @@ FORMAT='%(asctime)s %(levelname)s [%(name)s %(threadName)s ' \
 DATEFMT='%Y-%m-%d %H:%M:%S'
 
 
-def init():
-    """ Initialize the logging facility.
+def init(path=None, level=None):
+    """ Initialize the logging.
+
+        :param string path:     Path to the log file
+        :param string level:    Desired log level
     """
+    logger.debug('Initializing logging')
 
     # Read configuration
     # Get log level. In case the level is non-valid logging level raise error
-    level = getattr(logging, config.get('log', 'level', 'ERROR').upper(), None)
-    # FIXME raise error
+    if not level:
+        level = getattr(logging, conffile.get('log', 'level', 'ERROR').upper(),
+            None)
+    # FIXME raise error if level is not valid?
 
-    dests = config.get('log', 'dest', 'console').split(',')
+    if not path:
+        dests = conffile.get('log', 'dest', 'console').split(',')
+    else:
+        dests = [path]
 
     mode = 'w'
-    if config.getbool('log', 'append', False):
+    if not path and conffile.getbool('log', 'append', False):
         mode = 'a'
 
     # Create handlers for all destinations
@@ -104,3 +117,7 @@ def init():
         datefmt=DATEFMT,
         level=level,
         handlers=handlers)
+
+    logger.debug('Log level is {}'.format(level))
+    logger.debug('Logging initialized')
+

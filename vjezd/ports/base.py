@@ -25,36 +25,53 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-""" Ticket Model
-    ============
+""" Port Base Class
 """
 
-from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import Column
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, String, Time, DateTime
 
-from vjezd.db import Base
+class BasePort(object):
+    """ BasePort is an abstract base class for ports.
 
-
-class Ticket(Base):
-    """ Global configuration option for one or more devices.
+        Each port implementation (no matter which class it is should implement
+        these methods.
     """
 
-    __tablename__ = 'tickets'
-    __table_args__ = (
-        {'extend_existing': True})
+    def __init__(self, *args):
+        """ Initialize port with arguments.
 
-    id          = Column(Integer(), primary_key=True)
-    code        = Column(String(240), nullable=False, unique=True)
-    created     = Column(DateTime(), nullable=False, default=datetime.now())
-    created_device = Column(String(16), ForeignKey('devices.id'),
-                        nullable=False)
-    used        = Column(DateTime())
-    used_device = Column(String(16), ForeignKey('devices.id'))
-    validity    = Column(Time(), nullable=False, default='02:00:00')
-    cancelled   = Column(DateTime())
+            Implementation of initializer should just verify and store args to
+            port instance. It should NEVER try to open port as it might not be
+            even needed at this point.
+        """
+
+        raise NotImplementedError('Port class must implement __init__()')
+
+
+    def test(self):
+        """ Test port.
+
+            Implementation of this method should test if e.g. hardware
+            connected to this port is attached and works. If so, method should
+            return anything. If not it should raise a descriptive exception
+        """
+        raise NotImplementedError('Port class must implement test()')
+
+
+    def open(self):
+        pass
+
+
+    def close(self):
+        pass
+
+
+    def read(self):
+        pass
+
+
+    def write(self, data):
+        pass
+

@@ -30,4 +30,9 @@
 """
 
 # Import all models
+
+from vjezd.models.device import Device
+from vjezd.models.config import Config
 from vjezd.models.ticket import Ticket
+from vjezd.models.regular_hours import RegularHours
+from vjezd.models.exception_hours import ExceptionHours

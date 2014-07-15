@@ -25,36 +25,50 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-""" Ticket Model
+""" Pipe Scanner
     ============
 """
 
-from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import Column
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, String, Time, DateTime
-
-from vjezd.db import Base
+from vjezd.ports import BasePort
 
 
-class Ticket(Base):
-    """ Global configuration option for one or more devices.
+class PipeScanner(BasePort):
+    """ UNIX pipe scanner port.
+
+        Reads on a configured UNIX pipe for incoming code in ASCII. Every time
+        a code is submitted through UNIX pipe, scanner acts as if code was
+        read. Codes are submitted in plain-text one line per code.
+
+        Configuration
+        -------------
+        Port accepts the following positional arguments:
+        #. /path/to/pipe - filename of the scanner UNIX pipe
+
+        Full configuration line is:
+        ``scanner=pipe,/path/to/pipe``
     """
 
-    __tablename__ = 'tickets'
-    __table_args__ = (
-        {'extend_existing': True})
+    def __init__(self, *args):
+        """ Initialize port configuration.
+        """
 
-    id          = Column(Integer(), primary_key=True)
-    code        = Column(String(240), nullable=False, unique=True)
-    created     = Column(DateTime(), nullable=False, default=datetime.now())
-    created_device = Column(String(16), ForeignKey('devices.id'),
-                        nullable=False)
-    used        = Column(DateTime())
-    used_device = Column(String(16), ForeignKey('devices.id'))
-    validity    = Column(Time(), nullable=False, default='02:00:00')
-    cancelled   = Column(DateTime())
+        self.pipe = '/tmp/vjezd_scanner_pipe'
+        if(len(args) > 0):
+            self.pipe = args[0]
+
+        logger.debug('Scanner is using UNIX pipe: {}'.format(self.pipe))
+
+
+    def test(self):
+        """ Test if configured UNIX pipe can be created/opened.
+        """
+        # FIXME
+        pass
+
+
+
+# Export port_class for port_factory()
+port_class = PipeScanner

@@ -25,36 +25,62 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-""" Ticket Model
-    ============
+""" Test Button
+    ===========
 """
 
-from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import Column
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, String, Time, DateTime
+import evdev
 
-from vjezd.db import Base
+from vjezd.ports import BasePort
 
 
-class Ticket(Base):
-    """ Global configuration option for one or more devices.
+class EvdevButton(BasePort):
+    """ Event device button port.
+
+        Event device button port reads keypress events on specified event
+        device special file.
+
+        Configuration
+        -------------
+        Port accepts the following positional arguments:
+        #. /path/to/event_device - path to event device special file
+        #. keycode - keycode of trigger key
+
+        Full configuration line of evdev button is:
+        ``button=evdev,/path/to/event_device,keycode``
     """
 
-    __tablename__ = 'tickets'
-    __table_args__ = (
-        {'extend_existing': True})
+    def __init__(self, *args):
+        """ Initialize port configuration.
+        """
 
-    id          = Column(Integer(), primary_key=True)
-    code        = Column(String(240), nullable=False, unique=True)
-    created     = Column(DateTime(), nullable=False, default=datetime.now())
-    created_device = Column(String(16), ForeignKey('devices.id'),
-                        nullable=False)
-    used        = Column(DateTime())
-    used_device = Column(String(16), ForeignKey('devices.id'))
-    validity    = Column(Time(), nullable=False, default='02:00:00')
-    cancelled   = Column(DateTime())
+        self.evdev = '/dev/input/event0'
+        self.keycode = 57
+
+        if len(args) >= 1:
+            self.evdev = args[0]
+        if len(args) >= 2:
+            self.keycode = args[1]
+
+        logger.debug('Evdev button using: {} keycode={}'.format(
+            self.evdev, self.keycode))
+
+
+    def test(self):
+        """ Test if event device exists, is readable and has capability of
+            reading a keypress.
+        """
+        # FIXME
+        pass
+
+
+    def open(self):
+        """ Open event device.
+        """
+
+
+# Export port_class for port_factory()
+port_class = EvdevButton

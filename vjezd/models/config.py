@@ -26,35 +26,52 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-""" Ticket Model
+""" Config Model
     ============
 """
 
-from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, String, Time, DateTime
+from sqlalchemy import UniqueConstraint
+from sqlalchemy import Integer, String
 
 from vjezd.db import Base
 
 
-class Ticket(Base):
+class Config(Base):
     """ Global configuration option for one or more devices.
+
+        Configuration option stored in the DB in *config* table is considered
+        application-wide in opposite to option stored in device-local
+        configuration file.
+
+        Each option consists of ''option'' name, its ''value'' and optionally
+        from a relation to ''device'' for which is option set.
+
+        Columns
+        -------
+        :ivar option string:        option name
+        :ivar value string:         option value
+        :ivar device string:        foreign key to the Device record for which
+                                    is option set. If None, any device will
+                                    match it.
     """
 
-    __tablename__ = 'tickets'
-    __table_args__ = (
-        {'extend_existing': True})
+    __tablename__ = 'config'
+    __tableargs__ = (
+        {'extend_existing': True},
+        UniqueConstraint('option', 'device', name='uc_option_device'))
 
     id          = Column(Integer(), primary_key=True)
-    code        = Column(String(240), nullable=False, unique=True)
-    created     = Column(DateTime(), nullable=False, default=datetime.now())
-    created_device = Column(String(16), ForeignKey('devices.id'),
-                        nullable=False)
-    used        = Column(DateTime())
-    used_device = Column(String(16), ForeignKey('devices.id'))
-    validity    = Column(Time(), nullable=False, default='02:00:00')
-    cancelled   = Column(DateTime())
+    option      = Column(String(100), nullable=False)
+    value       = Column(String(240), nullable=True)
+    device      = Column(String(16), ForeignKey('devices.id'), nullable=True)
+
+
+    def __init__(self, option, value, device_id=None):
+        self.option = option
+        self.value = value
+        self.device_id = device_id

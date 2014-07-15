@@ -26,35 +26,49 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-""" Ticket Model
-    ============
+""" Exception Hours Model
+    =====================
 """
 
-from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, String, Time, DateTime
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Integer, String, Date, Time, Enum
 
 from vjezd.db import Base
 
 
-class Ticket(Base):
-    """ Global configuration option for one or more devices.
+class ExceptionHours(Base):
+    """ Exceptional opening hours. Devices will override their regular behavior
+        according to rules in this table.
+
+        If there's overlap in rules the highest identifier (newest rule) wins.
+
+        :ivar id integer:           regular opening hours rule identifier
+        :ivar device string:        device on which the rule applies, None for
+                                    any device
+        :ivar exception_date Date:  date of exception
+        :ivar exception_type string:type of exception, can be 'open' or
+                                    'closed'
+        :ivar time_start Time:      time of interval start
+        :ivar time_end Time:        time of interval end
+
     """
 
-    __tablename__ = 'tickets'
-    __table_args__ = (
-        {'extend_existing': True})
+    __tablename__ = 'exception_hours'
+    __tableargs__ = (
+        {'extend_existing': True},
+        CheckConstraint('time_end > time_start', name='cc_time'))
 
     id          = Column(Integer(), primary_key=True)
-    code        = Column(String(240), nullable=False, unique=True)
-    created     = Column(DateTime(), nullable=False, default=datetime.now())
-    created_device = Column(String(16), ForeignKey('devices.id'),
-                        nullable=False)
-    used        = Column(DateTime())
-    used_device = Column(String(16), ForeignKey('devices.id'))
-    validity    = Column(Time(), nullable=False, default='02:00:00')
-    cancelled   = Column(DateTime())
+    device      = Column(String(16), ForeignKey('devices.id'), nullable=True)
+    exception_date = Column(Date(), nullable=False)
+    exception_type = Column(Enum('open','closed'), nullable=False)
+    time_start  = Column(Time())
+    time_end    = Column(Time())
+
+
+

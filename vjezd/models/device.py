@@ -26,7 +26,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-""" Ticket Model
+""" Device Model
     ============
 """
 
@@ -35,26 +35,60 @@ import logging
 logger = logging.getLogger(__name__)
 
 from sqlalchemy import Column
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, String, Time, DateTime
+from sqlalchemy import Integer, String, DateTime, Enum
 
 from vjezd.db import Base
 
 
-class Ticket(Base):
-    """ Global configuration option for one or more devices.
+class Device(Base):
+    """ Named device acting in either printer, scanner or both modes.
+
+        Device records in table *devices* are created for informative purposes
+        and third party applications using same database. Each device is
+        expected to create/update its own record once initialized.
+
+        Fields
+        ------
+        :ivar id string:            device identifier read from configuration
+        :ivar last__seen datetime:  timestamp of last update of record
+        :ivar last_mode enum:       last mode in which was device operating
+        :ivar last_ip string:       last IP address of device
     """
 
-    __tablename__ = 'tickets'
+    __tablename__ = 'devices'
     __table_args__ = (
         {'extend_existing': True})
 
-    id          = Column(Integer(), primary_key=True)
-    code        = Column(String(240), nullable=False, unique=True)
-    created     = Column(DateTime(), nullable=False, default=datetime.now())
-    created_device = Column(String(16), ForeignKey('devices.id'),
-                        nullable=False)
-    used        = Column(DateTime())
-    used_device = Column(String(16), ForeignKey('devices.id'))
-    validity    = Column(Time(), nullable=False, default='02:00:00')
-    cancelled   = Column(DateTime())
+
+    id          = Column(String(8), primary_key=True)
+    # TODO UUID can avoid situation where multiple devices have same id
+    uuid        = Column(String(240), unique=True)
+    last__seen  = Column(DateTime(), default=datetime.now())
+    last_mode   = Column(Enum('print', 'scan', 'both'))
+    last_ip     = Column(String(240))
+
+
+    def __init__(self, id):
+        """ Initialize object with given parameters.
+        """
+        self.id = id
+
+
+    def last_seen(self, mode, ip):
+        """ Update last seen information about the device.
+        """
+        self.last_mode = mode
+        self.last_ip = ip
+        self.last__seen = datetime.now()
+
+
+    @property
+    def modes(self):
+        """ A tuple of all modes the device operates. Pseudo mode 'both' is
+            evaluated to tuple of both real modes 'print' and 'scan'.
+        """
+        if self.last_mode == 'both':
+            return ('print', 'scan')
+        else:
+            return (self.last_mode)
+

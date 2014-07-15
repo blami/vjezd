@@ -25,36 +25,30 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-""" Ticket Model
+""" Print Thread
     ============
 """
 
-from datetime import datetime
+import time
+import threading
 import logging
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import Column
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, String, Time, DateTime
-
-from vjezd.db import Base
+from vjezd import threads
 
 
-class Ticket(Base):
-    """ Global configuration option for one or more devices.
+class PrintThread(threading.Thread):
+    """ Thread
     """
 
-    __tablename__ = 'tickets'
-    __table_args__ = (
-        {'extend_existing': True})
+    def __init__(self):
+        """ Initialize print thread.
+        """
+        threading.Thread.__init__(self)
+        self.name = 'PrintThread'
 
-    id          = Column(Integer(), primary_key=True)
-    code        = Column(String(240), nullable=False, unique=True)
-    created     = Column(DateTime(), nullable=False, default=datetime.now())
-    created_device = Column(String(16), ForeignKey('devices.id'),
-                        nullable=False)
-    used        = Column(DateTime())
-    used_device = Column(String(16), ForeignKey('devices.id'))
-    validity    = Column(Time(), nullable=False, default='02:00:00')
-    cancelled   = Column(DateTime())
+
+    def run(self):
+        while not threads.exiting:
+           logger.debug('print')
+           time.sleep(2)

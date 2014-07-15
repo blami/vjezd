@@ -26,9 +26,16 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """ Database
+    ********
 
-    Database Configuration Options
-    ------------------------------
+    Installation
+    ------------
+    Application expects MySQL database engine to be installed on configured
+    host, an empty database created and a dedicated role with full permissions
+    for the database. Following is the minimal set of commands:
+
+    Configuration Options
+    ---------------------
     Database connection is configured per-device in the configuration file in
     section [db].
 """
@@ -40,59 +47,77 @@ logger = logging.getLogger(__name__)
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.exc import SQLAlchemyError
 
-from vjezd import APP_NAME
-from vjezd import config
+from vjezd import APP_NAME, APP_VER
+from vjezd import crit_exit
+from vjezd import conffile
 
 
 def init():
     """ Initialize the database connection.
     """
+    logger.debug('Initializing DB connection')
 
     ci = get_connection_info()
+
+    # Set SQL logger to same level as root logger
+    logging.getLogger('sqlalchemy.engine').setLevel(
+        logging.getLogger().getEffectiveLevel())
 
     # NOTE engine, session and Base aren't defined before calling init() which
     # makes application crash if db.init() wasn't called or failed. That's
     # intended behavior.
 
-    # create engine and session
+    # Create engine and session
     global engine
     global session
     engine = create_engine(ci)
-    # NOTE thread safe, see: http://flask.pocoo.org/docs/patterns/sqlalchemy/
+    # NOTE See: http://flask.pocoo.org/docs/patterns/sqlalchemy/
     session = scoped_session(sessionmaker(
         autocommit=False,
         autoflush=True,
-        bind=engine,
-        ))
+        bind=engine))
 
-    # create declarative base class for models
+    # Create declarative Base class for models
     global Base
     Base = declarative_base()
     Base.query = session.query_property()
 
-    # import all model modules, create all tables
-    # NOTE it is necessary to import any new model in models/__init__.py!
-    from vjezd import models
     try:
+        # Import all models and create/extend non-existent tables in DB
+        # NOTE all models must be imported in models/__init__.py
+        import vjezd.models
         Base.metadata.create_all(bind=engine)
-    except Exception as err:
-        logger.critical('Cannot create schema. Exiting.\n{}'.format(err))
-        sys.exit(1)
+
+    except SQLAlchemyError as err:
+        logger.critical('Unable to access DB: {}'.format(err))
+        crit_exit(2, err)
+
+    logger.debug('DB connection initialized')
+
+
+def finalize():
+    """ Close the database connection.
+    """
+    if 'session' in globals():
+       session.remove()
+
+    logger.debug('DB connection closed')
 
 
 def get_connection_info():
-    """ Get connection info from the configuration.
+    """ Get the connection info from the configuration.
     """
-
     # Assemble connection info for MySQL Connector
     ci='mysql+mysqlconnector://{user}:{password}@{host}/{dbname}'.format(
-        user=config.get('db', 'user', APP_NAME),
-        password=config.get('db', 'password', APP_NAME),
-        host=config.get('db', 'host', 'localhost'),
-        dbname=config.get('db', 'dbname', APP_NAME),
-        )
+        user=conffile.get('db', 'user', APP_NAME),
+        password=conffile.get('db', 'password', APP_NAME),
+        host=conffile.get('db', 'host', 'localhost'),
+        dbname=conffile.get('db', 'dbname', APP_NAME))
 
-    logger.info('Database connection info: {}'.format(ci))
+    logger.info('DB connection info: {}'.format(ci))
     return ci
+
+
 

@@ -25,36 +25,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-""" Ticket Model
-    ============
+""" Log Relay Port
+    ==============
 """
 
-from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import Column
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, String, Time, DateTime
-
-from vjezd.db import Base
+from vjezd.ports import BasePort
 
 
-class Ticket(Base):
-    """ Global configuration option for one or more devices.
+class LogRelay(BasePort):
+    """ Log relay.
+
+        Log relay will just do INFO level log entry on event of write() when
+        relay is switched ON and then also when it is switched OFF.
+
+        Configuration
+        -------------
+        No positional arguments accepted.
     """
 
-    __tablename__ = 'tickets'
-    __table_args__ = (
-        {'extend_existing': True})
+    def __init__(self, *args):
+        logger.debug('Log relay initialized')
 
-    id          = Column(Integer(), primary_key=True)
-    code        = Column(String(240), nullable=False, unique=True)
-    created     = Column(DateTime(), nullable=False, default=datetime.now())
-    created_device = Column(String(16), ForeignKey('devices.id'),
-                        nullable=False)
-    used        = Column(DateTime())
-    used_device = Column(String(16), ForeignKey('devices.id'))
-    validity    = Column(Time(), nullable=False, default='02:00:00')
-    cancelled   = Column(DateTime())
+
+    def test(self):
+        """ Log relay test always passes.
+        """
+        pass
+
+
+
+# Export port_class for port_factory()
+port_class = LogRelay
