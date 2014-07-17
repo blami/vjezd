@@ -25,36 +25,47 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" Log Printer Port
-    ================
+""" Base Thread
+    ===========
 """
 
+import threading
 import logging
 logger = logging.getLogger(__name__)
 
-from vjezd.ports.base import BasePort
+from vjezd import crit_exit
+from vjezd import threads
 
 
-class LogPrinter(BasePort):
-    """ Log printer.
+class BaseThread(threading.Thread):
+    """ Abstract base class for threads.
 
-        Log relay will just do INFO level log entry on event of printing a
-        ticket. Ticket code and validity is logged.
-
-        Configuration
-        -------------
-        No positional arguments accepted.
+        Each thread implementation should use BaseThread as a predcessor in
+        order to have sensible thread name, exiting flag processing.
     """
 
-    def __init__(self, *args):
-        logger.debug('Log printer initialized')
-
-
-    def test(self):
-        """ Log printer test always passes.
+    def __init__(self):
+        """ Initialize print thread.
         """
-        pass
+        threading.Thread.__init__(self)
+        self.name = self.__class__.__name__
 
 
-# Export port_class for port_factory()
-port_class = LogPrinter
+    def run(self):
+        """ Run thread.
+        """
+        try:
+            while not threads.exiting:
+                self.do()
+                if threads.exiting:
+                    logger.debug('Thread {} is exiting'.format(self.name))
+
+        except Exception as err:
+            logger.critical('Thread {} has failed: {}'.format(self.name, err))
+            crit_exit(11, err)
+
+
+    def do(self):
+        """ Abstract worker method of thread.
+        """
+        raise NotImplementedError

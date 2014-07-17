@@ -68,10 +68,13 @@ class BasePort(object):
         pass
 
 
+    def is_open(self):
+        return True
+
+
     def read(self):
         pass
 
 
     def write(self, data):
         pass
-

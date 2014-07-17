@@ -25,36 +25,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" Log Printer Port
-    ================
+""" Print Thread
+    ============
+
+    Print thread is supposed to operate device in print mode. Basic workflow of
+    this thread is to:
+
+    * wait for button press
+    * print ticket
+    * switch relay
+
 """
 
+import time
 import logging
 logger = logging.getLogger(__name__)
 
-from vjezd.ports.base import BasePort
+from vjezd.threads.base import BaseThread
+from vjezd.ports import port
 
 
-class LogPrinter(BasePort):
-    """ Log printer.
-
-        Log relay will just do INFO level log entry on event of printing a
-        ticket. Ticket code and validity is logged.
-
-        Configuration
-        -------------
-        No positional arguments accepted.
+class PrintThread(BaseThread):
+    """ Print thread class.
     """
 
-    def __init__(self, *args):
-        logger.debug('Log printer initialized')
+    def do(self):
+        """ Poll for button press and once pressed print a ticket.
+        """
+        port('button').read(callback=self.button_handler)
 
 
-    def test(self):
-        """ Log printer test always passes.
+    def button_handler(self):
+        """ Callback function for button port read event.
         """
         pass
-
-
-# Export port_class for port_factory()
-port_class = LogPrinter

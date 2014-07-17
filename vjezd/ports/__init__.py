@@ -45,47 +45,78 @@
     ---------------------
 """
 
+import sys
 import os
 import importlib
 import logging
 logger = logging.getLogger(__name__)
 
+from vjezd import crit_exit
 from vjezd import conffile
-from vjezd.ports.base import BasePort
 
 
-# Port instances, if None, then device doesn't have this port
-# NOTE Each port can have only single instance
-button = None
-relay = None
-printer = None
-scanner = None
+# Stores port instances. Each port class can have only one instance.
+ports = {}
 
 
 def init():
     """ Initialize ports.
     """
+    global ports
 
     logger.debug('Initializing ports')
-
-    button = port_factory('button')
-    relay = port_factory('relay')
-    printer = port_factory('printer')
-    scanner = port_factory('scanner')
-
-    logger.debug('Ports initialized')
+    for port_name in ('button', 'relay', 'printer', 'scanner'):
+        ports[port_name] = port_factory(port_name)
 
 
-def port_factory(port):
+def port(port_name):
+    """ Return instance of port if exists, otherwise None.
+    """
+    return ports.get(port_name)
+
+
+def has_ports(port_names):
+    """ Checks if all ports passed as port_names list are available.
+    """
+    for port_name in port_names:
+        if not port(port_name):
+            return False
+    return True
+
+
+def open_ports(port_names):
+    """ Open specified ports.
+    """
+    logger.debug('Opening ports: {}'.format(port_names))
+    for port_name in port_names:
+        p = port(port_name)
+        try:
+            if p and not p.is_open():
+                p.open()
+        except Exception as err:
+            logger.critical('Cannot open port {}: {}'.format(port_name, err))
+            crit_exit(4, err)
+
+
+def close_ports():
+    """ Close all open ports.
+    """
+    logger.debug('Closing ports')
+    for p in ports:
+        if ports[p].is_open():
+            ports[p].close()
+
+
+def port_factory(port_name):
     """ Get port instance.
 
         Port class is imported from vjezd.ports.<port>.<port_class> and
-        excepted to be assigned in port_class global variable.
+        expected to be assigned to port_class variable.
     """
-    logger.info('Trying to create port {}'.format(port))
+    logger.info('Trying to create port {}'.format(port_name))
 
     # Read the port configuration
-    conf = conffile.get('ports', port, None)
+    conf = conffile.get('ports', port_name, None)
     klass = None
     if conf:
         conf = conf.split(':')
@@ -95,14 +126,14 @@ def port_factory(port):
             args = conf[1].split(',')
 
     if not klass:
-        logger.info('Port {} is not configured. Skipping.'.format(port))
+        logger.info('Port {} is not configured. Skipping.'.format(port_name))
         return None
 
     logger.info('Initializing port {} as class:{} with args:{}.'.format(
-        port, klass, args))
+        port_name, klass, args))
 
     # Import and instantiate port class
-    path = 'vjezd.ports.{}.{}'.format(port, klass)
+    path = 'vjezd.ports.{}.{}'.format(port_name, klass)
     logger.debug('Importing port module from: {}'.format(path))
 
     inst = None
@@ -112,20 +143,21 @@ def port_factory(port):
         inst = obj(*args)
     except (ImportError, AttributeError) as err:
         logger.error('Cannot import port {} module: {}! Skipping'.format(
-            port, err))
+            port_name, err))
         return None
 
     # Instance must be of BasePort type
+    from vjezd.ports.base import BasePort
     if not isinstance(inst, BasePort):
         logger.error('Port {} class must inherit BasePort! Skipping.'.format(
-            port))
+            port_name))
         return None
 
     try:
         inst.test()
     except Exception as err:
-        logger.error('Port {} test failed: {}!'.format(port, err))
+        logger.error('Port {} test failed: {}!'.format(port_name, err))
         return None
 
-    logger.info('Port {} created'.format(port))
+    logger.info('Port {} created'.format(port_name))
     return inst

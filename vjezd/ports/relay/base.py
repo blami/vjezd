@@ -25,30 +25,57 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" Print Thread
-    ============
+""" Base Relay Port
+    ===============
 """
 
-import time
-import threading
 import logging
 logger = logging.getLogger(__name__)
 
-from vjezd import threads
+from vjezd.ports.base import BasePort
 
 
-class PrintThread(threading.Thread):
-    """ Thread
+class BaseRelay(BasePort):
+    """ Base relay.
+
+        As relay has configuration parameters in DB and they are non-dependent
+        on a given relay class, this class provides methods which any relay can
+        re-use in order to adhere to parameters. See the method descriptions
+        below.
+
+        Inherit from this class to get these methods in hardware-bound relay
+        port class.
+
     """
 
-    def __init__(self):
-        """ Initialize print thread.
+    def __init__(self, *args):
+        raise NotImplementedError
+
+
+    def get_print_delay(self):
+        """ Get delay in seconds before relay activation in print mode.
+
+            Relay should wait given amount of seconds before activation when
+            relay used from print mode (after printing ticket).
         """
-        threading.Thread.__init__(self)
-        self.name = 'PrintThread'
+        pass
 
 
-    def run(self):
-        while not threads.exiting:
-           logger.debug('print')
-           time.sleep(2)
+    def get_scan_delay(self):
+        """ Get delay in seconds before relay activation in scan mode.
+
+            Relay should wait given amount of seconds before activation when
+            relay used from scan mode (after scanning ticket).
+        """
+        pass
+
+
+    def get_period(self):
+        """ Get period between relay activation and deactivation.
+        """
+        # FIXME Not in specification
+        pass
+
+
+# Export port_class for port_factory()
+port_class = LogRelay

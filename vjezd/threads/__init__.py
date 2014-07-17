@@ -38,15 +38,16 @@ import threading
 import logging
 logger = logging.getLogger(__name__)
 
-from vjezd import crit_exit, exit
-from vjezd import device
+# NOTE Avoid vjezd imports here. Put them into run() instead to avoid circular
+# dependencies as this module is elementary
 
 # Constants
 NOT_EXITING = 0
 EXITING = 1
 CRIT_EXITING = 2
 
-# Globals
+# Module internal variables
+exiting_lock = threading.Lock()
 exiting = NOT_EXITING
 threads = []
 
@@ -57,36 +58,34 @@ def run():
         This method will instantiate apropriate threads for all device operated
         modes and will start them. Then will be polling on them.
     """
-
     # Avoid circular dependencies
-    from vjezd.threads.print_thread import PrintThread
-    from vjezd.threads.scan_thread import ScanThread
+    from vjezd import crit_exit, exit
+    from vjezd import device
+    from vjezd.threads.print import PrintThread
+    from vjezd.threads.scan import ScanThread
 
     if 'print' in device.device.modes:
         threads.append(PrintThread())
     if 'scan' in device.device.modes:
         threads.append(ScanThread())
 
-    for thread in threads:
-        logger.debug('Running thread {}'.format(thread.name))
-        try:
-            thread.start()
-        except Exception as err:
-            logger.crit('Cannot start thread {}: {}'.format(thread.name, err))
-            crit_exit(10, err, force_thread=True)
+    for t in threads:
+        logger.debug('Starting thread {}'.format(t.name))
+        t.start()
 
-    # Superseed running threads
     while not exiting:
         # Check if all threads are still active
-        for thread in threads:
-            if not thread.is_alive():
-                logger.critical('Thread {} has died'.format(thread.name))
+        for t in threads:
+            logger.debug('Monitoring threads')
+            if not t.is_alive():
+                logger.critical('Thread {} is not alive. Exiting'.format(
+                    t.name))
                 crit_exit(10, force_thread=True)
-        time.sleep(2)
+            time.sleep(1)
 
-    logger.info('Exiting. Waiting for threads to join...')
-    for thread in threads:
-        thread.join()
+    logger.info('Waiting for all threads to join')
+    for t in threads:
+        t.join()
 
     # Exit depending on exiting state
     if exiting == CRIT_EXITING:
@@ -95,7 +94,19 @@ def run():
         exit()
 
 
-def is_main():
+def set_exiting(state=EXITING):
+    """ Method to set exiting flag thread-safely.
+    """
+    global exiting
+
+    logger.debug('Waiting for exiting lock')
+    with exiting_lock:
+        if exiting != state:
+            logger.debug('Setting exiting flag to {}'.format(state))
+            exiting = state
+
+
+def is_main_thread():
     """ Checks whether current thread is the MainThread.
     """
 

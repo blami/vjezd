@@ -25,27 +25,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" Scan Thread
-    ===========
+""" Print Thread
+    ============
 """
 
-import time
-import threading
 import logging
 logger = logging.getLogger(__name__)
 
-from vjezd import crit_exit
+from vjezd.threads.base import BaseThread
 
-class ScanThread(threading.Thread):
-    """ Thread
+
+class ScanThread(BaseThread):
+    """ A class representing print mode thread.
     """
 
-    def __init__(self):
-        """ Initialize scan thread.
-        """
-        threading.Thread.__init__(self)
-        self.name = 'ScanThread'
-
-
-    def run(self):
-        crit_exit(10)
+    def do(self):
+        import time
+        time.sleep(5)

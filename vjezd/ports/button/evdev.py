@@ -29,12 +29,14 @@
     ===========
 """
 
+import select
 import logging
 logger = logging.getLogger(__name__)
 
-import evdev
+from evdev import InputDevice, ecodes
+from evdev.events import KeyEvent
 
-from vjezd.ports import BasePort
+from vjezd.ports.base import BasePort
 
 
 class EvdevButton(BasePort):
@@ -47,26 +49,28 @@ class EvdevButton(BasePort):
         -------------
         Port accepts the following positional arguments:
         #. /path/to/event_device - path to event device special file
-        #. keycode - keycode of trigger key
+        #. scancode - scancode of trigger key
 
         Full configuration line of evdev button is:
         ``button=evdev,/path/to/event_device,keycode``
     """
 
+
     def __init__(self, *args):
         """ Initialize port configuration.
         """
 
-        self.evdev = '/dev/input/event0'
-        self.keycode = 57
+        self.path = '/dev/input/event0'
+        self.scancode = 57
+        self.device = None
 
         if len(args) >= 1:
-            self.evdev = args[0]
+            self.path = args[0]
         if len(args) >= 2:
-            self.keycode = args[1]
+            self.scancode = int(args[1])
 
         logger.debug('Evdev button using: {} keycode={}'.format(
-            self.evdev, self.keycode))
+            self.path, self.scancode))
 
 
     def test(self):
@@ -80,6 +84,47 @@ class EvdevButton(BasePort):
     def open(self):
         """ Open event device.
         """
+        logger.debug('Opening evdev {}'.format(self.path))
+        self.device = InputDevice(self.path)
+        if self.device:
+            logger.info('Evdev button found: {}'.format(self.device))
+
+
+    def close(self):
+        """ Close event device.
+        """
+        logger.debug('Closing evdev {}'.format(self.path))
+        if self.is_open():
+            self.device.close()
+
+
+    def is_open(self):
+        """ Check whether the device is open.
+        """
+        if self.device:
+            return True
+        return False
+
+
+    def read(self):
+        """ Read port.
+
+            Return True if button was pressed.
+        """
+        import time
+
+        # In order to avoid bare polling a select() is called on device
+        # descriptor with a reasonable timeout so the thread can be
+        # interrupted. In case of event read we will read and process it.
+        r, w, x = select.select([self.device.fd], [], [], 1)
+        if r:
+            e = self.device.read_one()
+            if e.type == ecodes.EV_KEY \
+                and e.value == 0 and e.code == self.scancode:
+                    logger.debug('Trigger event: {}'.format(e))
+                    return True
+
+        return False
 
 
 # Export port_class for port_factory()

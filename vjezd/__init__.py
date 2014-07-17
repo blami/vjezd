@@ -35,6 +35,7 @@ import getopt
 import logging
 logger = logging.getLogger(__name__)
 
+from vjezd import threads
 
 # Python version check
 v = sys.version_info
@@ -109,10 +110,13 @@ def finalize():
 
     # NOTE This method is called even in state of crash so it must handle
     # corner cases very well.
-    logger.info('Finalizing')
+    logger.debug('Finalizing before exit')
 
     from vjezd import ports
     from vjezd import db
+
+    # Close ports
+    ports.close_ports()
 
     # Close DB connection
     db.finalize()
@@ -121,6 +125,8 @@ def finalize():
 def crit_exit(code=1, err=None, force_thread=False):
     """ Exit program.
 
+        :param code integer:        Exit code
+        :param err Error:           Exception object
         :param is_thread bool:      Force thread behavior (for vjezd.threads)
     """
 
@@ -137,14 +143,12 @@ def crit_exit(code=1, err=None, force_thread=False):
     # TODO restart?
 
     # If we aren't main thread just notify threads to exit
-    from vjezd import threads
-    if force_thread == True or not threads.is_main():
+    if force_thread == True or not threads.is_main_thread():
         # NOTE in case of force_thread == True thread name in log will be wrong
         logger.critical('Thread has failed! Exiting')
-        threads.exiting = threads.CRIT_EXITING
+        threads.set_exiting(threads.CRIT_EXITING)
     else:
         logger.critical('Application has failed! Exiting')
-
         finalize()
         sys.exit(code)
 
@@ -156,7 +160,7 @@ def exit(code=0):
     # Signal handlers are always executed in main thread and theres no way the
     # mode thread would exit app cleanly so we can exit directly.
 
-    logger.info('Exiting')
+    logger.info('Exiting normally')
 
     finalize()
     sys.exit(code)
@@ -166,13 +170,10 @@ def signal_handler(signum, frame):
     """ Handle signals.
     """
 
-    from vjezd import threads
-
-    logger.warning('Got handled signal: {}'.format(signum))
-
+    # SIGINT (or ^C)
     if signum == signal.SIGINT:
-        logger.warning('SIGINT. Interrupting threads might take a while...')
-        threads.exiting = threads.EXITING
+        logger.warning('Got SIGINT. Interrupting threads. Please wait')
+        threads.set_exiting(threads.EXITING)
 
 
 def main(args):
@@ -245,7 +246,6 @@ def main(args):
     # Import the rest of application modules
     from vjezd import ports
     from vjezd import device
-    from vjezd import threads
 
     # Initialize ports as we need them to decide which mode device operates in
     # in case it is being set to auto.
@@ -255,4 +255,5 @@ def main(args):
     device.init(opt_id, opt_mode)
 
     # Run threads
+    # NOTE This method also monitors thread from the
     threads.run()

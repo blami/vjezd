@@ -32,7 +32,7 @@
 import logging
 logger = logging.getLogger(__name__)
 
-from vjezd.ports import BasePort
+from vjezd.ports.base import BasePort
 
 
 class PipeScanner(BasePort):

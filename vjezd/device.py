@@ -67,17 +67,23 @@ def init(id=None, mode=None):
                 'Unknown mode {}. Falling back to auto'.format(mode))
             mode='auto'
 
+    # Dependency matrix for each mode.
+    dep = {
+        'both': ['button', 'relay', 'printer', 'scanner'],
+        'print': ['button', 'relay', 'printer'],
+        'scan': ['scanner', 'relay']}
 
     # If mode is auto, decide device mode based on ports.
     if mode == 'auto':
         logger.debug('Trying to auto-detect mode based on available ports')
-        if all([ports.button, ports.relay, ports.printer, ports.scanner]):
-            mode = 'both'
-        elif all([ports.button, ports.relay, ports.printer]):
-            mode = 'print'
-        elif all([ports.relay, ports.scanner]):
-            mode = 'scan'
-        else:
+
+        # Make dep dict doesn't guarantee order, sort by lenght of dep list.
+        for d in sorted(dep.keys(), key=lambda k: len(dep[k]), reverse=True):
+            if ports.has_ports(dep[d]):
+                mode = d
+                break
+
+        if mode == 'auto':
             logger.critical('No suitable mode for device ports!')
             crit_exit(3)
 
@@ -86,15 +92,9 @@ def init(id=None, mode=None):
     # If mode is given (print, scan, both) just verify requirements and fail in
     # case they're not met.
     else:
-        reqs = {
-            'print': ['button', 'relay', 'printer'],
-            'scan': ['scanner', 'relay'],
-            'both': ['button', 'relay', 'printer', 'scanner']}
-
-        if not all([getattr(ports, p) for p in reqs[mode]]):
+        if not ports.has_ports(dep[mode]):
             logger.critical('Mode {} requires ports: {}; missing: {}'.format(
-                mode, reqs[mode],
-                [p for p in reqs[mode] if not getattr(ports, p)]))
+                mode, dep[mode], [p for p in dep[mode] if not ports.port(p)]))
             crit_exit(3)
 
         logger.info('Device mode: {}'.format(mode))
@@ -125,7 +125,17 @@ def init(id=None, mode=None):
         logger.critical('Unable to get device object: {}!'.format(err))
         crit_exit(3, err)
 
+    # Open the device ports
+    ports.open_ports(dep[mode])
+
     logger.debug('Device {} initialized.'.format(id))
+
+
+def finalize():
+    """ Finalize device.
+    """
+
+    ports.close_ports()
 
 
 def get_ip():
