@@ -36,6 +36,8 @@ logger = logging.getLogger(__name__)
 from vjezd import crit_exit
 from vjezd import threads
 
+from vjezd.models import RegularHours, ExceptionHours
+
 
 class BaseThread(threading.Thread):
     """ Abstract base class for threads.
@@ -69,3 +71,26 @@ class BaseThread(threading.Thread):
         """ Abstract worker method of thread.
         """
         raise NotImplementedError
+
+
+    def check_hours(self):
+        """ Check whether device operates in or past opening hours (including
+            both regular and exception hours.)
+
+            :return:                True if in opening hours, otherwise False
+        """
+
+        r = False
+
+        r = RegularHours.check()
+        exc = ExceptionHours.check()
+
+        if exc in ('open', 'closed'):
+            if exc == 'open' and not r:
+                logger.warning('Exception hours match. Forced opening hours')
+                r = True
+            elif exc == 'closed' and r:
+                logger.warning('Exception hours match. Forced closed hours')
+                r = False
+
+        return r

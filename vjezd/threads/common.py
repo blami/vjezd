@@ -36,24 +36,4 @@ logger = logging.getLogger(__name__)
 from vjezd.models import RegularHours, ExceptionHours
 
 
-def check_hours():
-    """ Check whether device operates in or past opening hours (including both
-        regular and exception hours.)
 
-        :return:                    True if in opening hours, otherwise False
-    """
-
-    r = False
-
-    r = RegularHours.check()
-    exc = ExceptionHours.check()
-
-    if exc in ('open', 'closed'):
-        if exc == 'open' and not r:
-            logger.warning('Exception hours match. Forced opening hours')
-            r = True
-        elif exc == 'closed' and r:
-            logger.warning('Exception hours match. Forced closed hours')
-            r = False
-
-    return r
