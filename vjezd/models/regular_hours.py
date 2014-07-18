@@ -30,6 +30,7 @@
     ===================
 """
 
+from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Integer, String, Time
+from sqlalchemy import or_
 
 from vjezd.db import Base
 
@@ -51,18 +53,18 @@ class RegularHours(Base):
         :ivar device string:        device on which the rule applies, None for
                                     any device
         :ivar day_of_week integer:  day of week when rule applies:
-                                    0-all days,
-                                    1..7-week days (from Mon to Sun),
-                                    8-work days
+                                    0..6-week days (from Mon to Sun),
+                                    7-work days
+                                    8-all days
         :ivar time_start Time:      time of interval start
         :ivar time_end Time:        time of interval end
     """
 
     __tablename__ = 'regular_hours'
-    __tableargs__ = (
-        {'extend_existing': True},
+    __table_args__ = (
         CheckConstraint('0 <= day_of_week <= 8', name='cc_day_of_week'),
-        CheckConstraint('time_end > time_start', name='cc_time'))
+        CheckConstraint('time_end > time_start', name='cc_time'),
+        {'extend_existing': True})
 
     id          = Column(Integer(), primary_key=True)
     device      = Column(String(16), ForeignKey('devices.id'), nullable=True)
@@ -70,3 +72,37 @@ class RegularHours(Base):
     time_start  = Column(Time())
     time_end    = Column(Time())
 
+
+    @staticmethod
+    def check():
+        """ Check whether currently are regular hours and device should act.
+
+            :return:                True if at least one matching rule was
+                                    found otherwise False
+        """
+        from vjezd.device import device as this_device
+
+        t = datetime.now()
+
+        # Setup list of valid day of week criteria vector
+        d = [8]
+        d.append(t.weekday())
+        if t.weekday() < 5:
+            d.append(7)
+
+        # Find at least one matching rule
+        regular_hours = RegularHours.query.filter(
+            # only rules valid for this device
+            or_(RegularHours.device == this_device.id,
+                RegularHours.device == None),
+            # AND meeting the day_of_week criteria
+            RegularHours.day_of_week.in_(d),
+            # AND meeting the time_start <= now <= time_end criteria
+            RegularHours.time_start <= t.strftime('%H:%M:%S'),
+            RegularHours.time_end >= t.strftime('%H:%M:%S')
+            ).first()
+
+        if regular_hours:
+            return True
+
+        return False

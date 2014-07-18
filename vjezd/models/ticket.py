@@ -30,7 +30,7 @@
     ============
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 logger = logging.getLogger(__name__)
 
@@ -38,11 +38,12 @@ from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer, String, Time, DateTime
 
+from vjezd import barcode
 from vjezd.db import Base
 
 
 class Ticket(Base):
-    """ Global configuration option for one or more devices.
+    """ Ticket.
     """
 
     __tablename__ = 'tickets'
@@ -58,3 +59,28 @@ class Ticket(Base):
     used_device = Column(String(16), ForeignKey('devices.id'))
     validity    = Column(Time(), nullable=False, default='02:00:00')
     cancelled   = Column(DateTime())
+
+
+    def __init__(self):
+        """ Initialize new ticket with given validity period.
+        """
+        from vjezd.device import device as this_device
+        from vjezd.models import Config
+
+        # FIXME in barcode.py
+        self.code = barcode.generate()
+
+        self.created = datetime.now()
+        self.created_device = this_device.id
+
+        # Get validity (minutes) configuration option and convert it into time
+        v = Config.get_int('validity')
+        if v:
+            self.validity = timedelta(minutes=v)
+
+
+    def __repr__(self):
+        """ String representation of object.
+        """
+        return '[Ticket {} validity:{} used:{}]'.format(
+            self.code, self.validity, self.used)

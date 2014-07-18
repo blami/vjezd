@@ -25,46 +25,35 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" Base Relay Port
-    ===============
-"""
+""" Common Functions
+    ****************
 
+    This module contains common utility functions used by all threads.
+"""
 import logging
 logger = logging.getLogger(__name__)
 
-from vjezd.ports.base import BasePort
-from vjezd.models import Config
+from vjezd.models import RegularHours, ExceptionHours
 
 
-class BaseRelay(BasePort):
-    """ Base relay.
+def check_hours():
+    """ Check whether device operates in or past opening hours (including both
+        regular and exception hours.)
 
-        As relay has configuration parameters in DB and they are non-dependent
-        on a given relay class, this class provides methods which any relay can
-        re-use in order to adhere to parameters. See the method descriptions
-        below.
-
-        Inherit from this class to get these methods in hardware-bound relay
-        port class.
-
+        :return:                    True if in opening hours, otherwise False
     """
 
-    def __init__(self, *args):
-        raise NotImplementedError
+    r = False
 
+    r = RegularHours.check()
+    exc = ExceptionHours.check()
 
-    def get_delay(self, mode):
-        """ Get delay in seconds before relay activation in given mode.
+    if exc in ('open', 'closed'):
+        if exc == 'open' and not r:
+            logger.warning('Exception hours match. Forced opening hours')
+            r = True
+        elif exc == 'closed' and r:
+            logger.warning('Exception hours match. Forced closed hours')
+            r = False
 
-            Relay should wait given amount of seconds before activation when
-            relay used in given mode.
-        """
-        fallback = {'print': 5, 'scan': 25}
-        return Config.get_int('relay_{}_delay'.format(mode), fallback[mode])
-
-
-    def get_period(self):
-        """ Get period between relay activation and deactivation.
-        """
-        # FIXME Not in specification
-        pass
+    return r

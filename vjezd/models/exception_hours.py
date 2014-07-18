@@ -30,6 +30,7 @@
     =====================
 """
 
+from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Integer, String, Date, Time, Enum
+from sqlalchemy import or_
 
 from vjezd.db import Base
 
@@ -54,14 +56,15 @@ class ExceptionHours(Base):
         :ivar exception_type string:type of exception, can be 'open' or
                                     'closed'
         :ivar time_start Time:      time of interval start
-        :ivar time_end Time:        time of interval end
+        :ivar time_end Time:        time of interval end (use 24:00 for
+                                    midnight)
 
     """
 
     __tablename__ = 'exception_hours'
-    __tableargs__ = (
-        {'extend_existing': True},
-        CheckConstraint('time_end > time_start', name='cc_time'))
+    __table_args__ = (
+        CheckConstraint('time_end > time_start', name='cc_time'),
+        {'extend_existing': True})
 
     id          = Column(Integer(), primary_key=True)
     device      = Column(String(16), ForeignKey('devices.id'), nullable=True)
@@ -71,4 +74,29 @@ class ExceptionHours(Base):
     time_end    = Column(Time())
 
 
+    @staticmethod
+    def check():
+        """ Check whether currently are exception hours and device should act.
 
+            :return:                type of exception ('open' or 'closed') for
+                                    matching rule with highest identifier,
+                                    otherwise None.
+        """
+        from vjezd.device import device as this_device
+        t = datetime.now()
+
+        exception_hours = ExceptionHours.query.filter(
+            # only rules valid for this device
+            or_(ExceptionHours.device == this_device.id,
+                ExceptionHours.device == None),
+            # AND meeting the exception_date criteria
+            ExceptionHours.exception_date == t.strftime('%Y-%m-%d'),
+            # AND meeting the time_start <= now <= time_end criteria
+            ExceptionHours.time_start <= t.strftime('%H:%M:%S'),
+            ExceptionHours.time_end >= t.strftime('%H:%M:%S')
+            ).order_by(ExceptionHours.id.desc()).first()
+
+        if exception_hours:
+            return exception_hours.exception_type
+
+        return None

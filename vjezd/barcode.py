@@ -25,46 +25,21 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" Base Relay Port
-    ===============
+""" Barcode
+    *******
+
+    Utility functions for handling barcodes in Code128 standard.
 """
 
+from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
-from vjezd.ports.base import BasePort
-from vjezd.models import Config
+from vjezd import APP_NAME, APP_VER
+from vjezd import device
 
 
-class BaseRelay(BasePort):
-    """ Base relay.
-
-        As relay has configuration parameters in DB and they are non-dependent
-        on a given relay class, this class provides methods which any relay can
-        re-use in order to adhere to parameters. See the method descriptions
-        below.
-
-        Inherit from this class to get these methods in hardware-bound relay
-        port class.
-
+def generate():
+    """ Generate a new unique barcode.
     """
-
-    def __init__(self, *args):
-        raise NotImplementedError
-
-
-    def get_delay(self, mode):
-        """ Get delay in seconds before relay activation in given mode.
-
-            Relay should wait given amount of seconds before activation when
-            relay used in given mode.
-        """
-        fallback = {'print': 5, 'scan': 25}
-        return Config.get_int('relay_{}_delay'.format(mode), fallback[mode])
-
-
-    def get_period(self):
-        """ Get period between relay activation and deactivation.
-        """
-        # FIXME Not in specification
-        pass
+    return datetime.now().strftime('%Y%m%d%H%M%S')

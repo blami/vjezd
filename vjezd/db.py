@@ -120,11 +120,11 @@ def get_connection_info():
     return ci
 
 
-def install_schema(drop_all=False):
+def install_schema(factory=False):
     """ Install schema.
 
         Create default values and constants in fresh schema tables.
 
-        :param drop_all boolean:        Factory settings, drop all data!
+        :param factory boolean:         Factory reset all defaults
     """
     pass

@@ -32,6 +32,7 @@
 import logging
 logger = logging.getLogger(__name__)
 
+from vjezd.models import Ticket
 from vjezd.ports.base import BasePort
 
 
@@ -54,6 +55,17 @@ class LogPrinter(BasePort):
         """ Log printer test always passes.
         """
         pass
+
+
+    def write(self, data):
+        """ Write out data.
+
+            :param data Ticket:         Ticket object to be printed
+        """
+        if isinstance(data, Ticket):
+            logger.info('Printing ticket: {}'.format(data))
+        else:
+            logger.error('Obtained data is not ticket: {}'.format(data))
 
 
 # Export port_class for port_factory()

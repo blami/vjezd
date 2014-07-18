@@ -28,6 +28,15 @@
 
 """ Config Model
     ============
+
+    List of all supported configuration options:
+
+    Option                      Description
+    ==========================  ===============================================
+    validity                    ticket validity (minutes)
+    relay_print_delay           relay activation delay in print (seconds)
+    relay_scan_delay            relay activation delay in scan (seconds)
+    ==========================  ===============================================
 """
 
 import logging
@@ -37,6 +46,7 @@ from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import Integer, String
+from sqlalchemy import or_
 
 from vjezd.db import Base
 
@@ -51,6 +61,13 @@ class Config(Base):
         Each option consists of ''option'' name, its ''value'' and optionally
         from a relation to ''device'' for which is option set.
 
+        Theres a constraint on key ''option'', ''device'' but if device is NULL
+        (which means that option is applicable for all devices) the unique does
+        not take effect. In that case the option with highest identifier
+        (latest one) has the highest priority and will be used.
+
+        Please note that option names are case sensitive.
+
         Columns
         -------
         :ivar option string:        option name
@@ -61,9 +78,9 @@ class Config(Base):
     """
 
     __tablename__ = 'config'
-    __tableargs__ = (
-        {'extend_existing': True},
-        UniqueConstraint('option', 'device', name='uc_option_device'))
+    __table_args__ = (
+        UniqueConstraint('option', 'device', name='uc_option_device'),
+        {'extend_existing': True})
 
     id          = Column(Integer(), primary_key=True)
     option      = Column(String(100), nullable=False)
@@ -72,6 +89,53 @@ class Config(Base):
 
 
     def __init__(self, option, value, device_id=None):
+        """ Initialize configuration option with given parameters.
+        """
         self.option = option
         self.value = value
         self.device_id = device_id
+
+
+    def __repr__(self):
+        """ String representation of object.
+        """
+        return '[Config {}={}, device:{}, id:{}]'.format(
+            self.option, self.value, self.device, self.id)
+
+
+    @staticmethod
+    def get(option, fallback=None):
+        """ Get option. If not found return fallback value.
+
+            Option with device column set to current device id will be
+            prioritized.
+
+            :param fallback:        fallback value used in case the given
+                                    option doesn't exists or its value is None
+        """
+        from vjezd.device import device as this_device
+
+        o = Config.query.filter(
+            # only rules valid for this device
+            or_(Config.device == this_device.id,
+                Config.device == None),
+            # AND meeting the option name
+            Config.option == option,
+            ).order_by(Config.device.desc(), Config.id.desc()).first()
+
+        if o:
+            logger.debug('Read option from db: {}'.format(o))
+            if o.value == None:
+                return fallback
+            return o.value
+
+        return fallback
+
+
+    @staticmethod
+    def get_int(option, fallback=None):
+        """ Get option and coerce it into integer if possible. Otherwise return
+            fallback.
+        """
+        return int(Config.get(option, fallback))
+

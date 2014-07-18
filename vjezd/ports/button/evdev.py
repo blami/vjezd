@@ -106,13 +106,12 @@ class EvdevButton(BasePort):
         return False
 
 
-    def read(self):
+    def read(self, callback=None):
         """ Read port.
 
-            Return True if button was pressed.
+            If button event is triggered a function assigned to callback
+            argument is run.
         """
-        import time
-
         # In order to avoid bare polling a select() is called on device
         # descriptor with a reasonable timeout so the thread can be
         # interrupted. In case of event read we will read and process it.
@@ -121,10 +120,26 @@ class EvdevButton(BasePort):
             e = self.device.read_one()
             if e.type == ecodes.EV_KEY \
                 and e.value == 0 and e.code == self.scancode:
-                    logger.debug('Trigger event: {}'.format(e))
+                    logger.debug('Trigger: {}'.format(e))
+                    # Execute callback function
+                    if callback and hasattr(callback, '__call__'):
+                        callback()
                     return True
-
         return False
+
+
+    def flush(self):
+        """ Flush port.
+        """
+
+        logger.debug('Flushing port')
+        while True:
+            r, w, x = select.select([self.device.fd], [], [], 0)
+            if r:
+                self.device.read_one()
+            else:
+                break
+
 
 
 # Export port_class for port_factory()

@@ -74,6 +74,12 @@ class Device(Base):
         self.id = id
 
 
+    def __repr__(self):
+        """ String representation of object.
+        """
+        return '[Device id:{} mode:{}]'.format(self.id, self.last_mode)
+
+
     def last_seen(self, mode, ip):
         """ Update last seen information about the device.
         """

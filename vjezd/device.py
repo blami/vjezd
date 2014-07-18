@@ -42,14 +42,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from vjezd import crit_exit
 from vjezd import conffile
-from vjezd import db
 from vjezd import ports
+from vjezd import db
 from vjezd.models import Device
 
 
 def init(id=None, mode=None):
-    """ Initialize the device. """
-
+    """ Initialize the device.
+    """
     logger.debug('Initializing device')
 
     # Determine device identifier

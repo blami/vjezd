@@ -72,9 +72,42 @@ class BasePort(object):
         return True
 
 
-    def read(self):
-        pass
+    def read(self, callback=None):
+        """ Read data from port.
+
+            Implementation of this method should read data from the port and if
+            read was successful (data obtained) it should call function passed
+            as callback. Any exception durring read will be considered as
+            critical unless handled inside the method itself.
+
+            Method shouldn't be blocking for infinite amount of time as that
+            effectively disables its thread from being interrupted. Method will
+            be invoked from thread in interruptible infinte loop. Good practice
+            is to block for moderate amount of time (1-2 seconds) so the thread
+            can be interrupted.
+
+            Callback method has a signature callback(data=None).
+        """
+        logger.warning('Method read() not handled by port!')
 
 
-    def write(self, data):
+    def write(self, data=None):
+        """ Write data to port.
+
+            Implementation of this method will send data to port. Any exception
+            during the write will be considered as critical unless handled
+            inside the method itself.
+        """
+        logger.warning('Method write() not handled by port!')
+
+
+    def flush(self):
+        """ Flush port.
+
+            Implementation of this method will remove all events from queue (if
+            any) ignoring them.
+
+            This is usefull for quiet periods (e.g. button pushing while relay
+            is activated.
+        """
         pass

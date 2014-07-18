@@ -29,13 +29,14 @@
     ==============
 """
 
+import time
 import logging
 logger = logging.getLogger(__name__)
 
-from vjezd.ports.base import BasePort
+from vjezd.ports.relay.base import BaseRelay
 
 
-class LogRelay(BasePort):
+class LogRelay(BaseRelay):
     """ Log relay.
 
         Log relay will just do INFO level log entry on event of write() when
@@ -55,6 +56,23 @@ class LogRelay(BasePort):
         """
         pass
 
+
+    def write(self, data):
+        """ Activate relay.
+
+            :param data string:     activation mode (print or scan)
+        """
+        if data not in ('print', 'scan'):
+            logger.error('Invalid activation mode: {}'.format(data))
+            return
+
+        # Get delay
+        delay = self.get_delay(data)
+        logger.info('Waiting configured delay {} seconds'.format(delay))
+        time.sleep(delay)
+
+        # Activate relay
+        logger.info('Activating relay in {} mode'.format(data))
 
 
 # Export port_class for port_factory()
