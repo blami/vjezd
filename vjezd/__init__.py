@@ -255,5 +255,9 @@ def main(args):
     device.init(opt_id, opt_mode)
 
     # Run threads
-    # NOTE This method also monitors thread from the
-    threads.run()
+    # NOTE This method also monitors threads
+    try:
+        threads.run()
+    except Exception as err:
+        logger.critical('Cannot start application threads: {}'.format(err))
+        crit_exit(10, err)

@@ -25,20 +25,36 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" Print Thread
-    ============
+""" Scan Thread
+    ===========
 """
 
 import logging
 logger = logging.getLogger(__name__)
 
 from vjezd.threads.base import BaseThread
-
+from vjezd.ports import port
 
 class ScanThread(BaseThread):
     """ A class representing print mode thread.
     """
 
     def do(self):
-        import time
-        time.sleep(5)
+        """ Poll for read codes and once scanned valid code open gate.
+        """
+        port('scanner').read(callback=self.scanner_callback)
+
+
+    def scanner_callback(self, data=None):
+        """ Callback function for scanner port read event.
+
+            Once the code is scanned the following actions are done:
+            #. Verify opening hours
+            #. Check if code is valid
+            #. If valid use it
+            #. Activate relay in scan mode
+            #. Flush scanner port to ignore queued events (while relay open)
+        """
+        logger.info('Code scanned {}')
+
+        logger.debug(data)

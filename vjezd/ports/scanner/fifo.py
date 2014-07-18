@@ -25,122 +25,100 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" Test Button
-    ===========
+""" FIFO (Named Pipe) Scanner
+    =========================
 """
 
+import os
 import select
 import logging
 logger = logging.getLogger(__name__)
 
-from evdev import InputDevice, ecodes
-from evdev.events import KeyEvent
-
 from vjezd.ports.base import BasePort
 
 
-class EvdevButton(BasePort):
-    """ Event device button port.
+class FIFOScanner(BasePort):
+    """ UNIX fifo (named pipe) scanner port.
 
-        Event device button port reads keypress events on specified event
-        device special file.
+        Reads on a configured UNIX fifo for incoming code in ASCII. Every time
+        a code is submitted through UNIX fifo, scanner acts as if code was
+        read. Codes are submitted in plain-text one line ('\\n') per code. If
+        there's a non-line leftover before end of buffer, it's being ignored.
+
+        UNIX fifo will be created on filesystem. If it already exists, program
+        will fail.
 
         Configuration
         -------------
         Port accepts the following positional arguments:
-        #. /path/to/event_device - path to event device special file
-        #. scancode - scancode of trigger key
+        #. /path/to/fifo - filename of the scanner UNIX fifo
 
-        Full configuration line of evdev button is:
-        ``button=evdev,/path/to/event_device,keycode``
+        Full configuration line is:
+        ``scanner=fifo,/path/to/fifo``
     """
-
 
     def __init__(self, *args):
         """ Initialize port configuration.
         """
 
-        self.path = '/dev/input/event0'
-        self.scancode = 57
-        self.device = None
-
-        if len(args) >= 1:
+        self.fifo = None
+        self.path = '/tmp/vjezd_scanner_fifo'
+        if(len(args) > 0):
             self.path = args[0]
-        if len(args) >= 2:
-            self.scancode = int(args[1])
 
-        logger.debug('Evdev button using: {} keycode={}'.format(
-            self.path, self.scancode))
+        logger.debug('Scanner is using UNIX fifo: {}'.format(self.path))
 
 
     def test(self):
-        """ Test if event device exists, is readable and has capability of
-            reading a keypress.
+        """ Test if configured UNIX fifo can be created/opened.
         """
         # FIXME
         pass
 
 
     def open(self):
-        """ Open event device.
+        """ Create and open UNIX fifo.
         """
-        logger.debug('Opening evdev {}'.format(self.path))
-        self.device = InputDevice(self.path)
-        if self.device:
-            logger.info('Evdev button found: {}'.format(self.device))
+        logger.debug('Opening UNIX fifo: {}'.format(self.path))
+        os.mkfifo(self.path)
+        # Create fifo non-blocking (don't wait for other side)
+        fd = os.open(self.path, os.O_RDONLY | os.O_NONBLOCK)
+        self.fifo = os.fdopen(fd)
 
 
     def close(self):
-        """ Close event device.
+        """ Close and destroy UNIX fifo.
         """
-        logger.debug('Closing evdev {}'.format(self.path))
-        if self.is_open():
-            self.device.close()
+        logger.debug('Closing UNIX fifo: {}'.format(self.path))
+        if self.is_open:
+            self.fifo.close()
+            logger.debug('Removing UNIX fifo filesystem object')
+            os.remove(self.path)
 
 
     def is_open(self):
-        """ Check whether the event device is open.
+        """ Check whether the UNIX fifo is open.
         """
-        if self.device:
+        if self.fifo:
             return True
         return False
 
 
     def read(self, callback=None):
-        """ Read event device.
+        """ Read UNIX fifo.
 
-            If button event is triggered a function assigned to callback
-            argument is run.
+            If code is detected a function assigned to callback argument is
+            run.
         """
         # In order to avoid bare polling a select() is called on device
         # descriptor with a reasonable timeout so the thread can be
         # interrupted. In case of event read we will read and process it.
-        r, w, x = select.select([self.device.fileno()], [], [], 1)
+        r, w, x = select.select([self.fifo.fileno()], [], [], 1)
         if r:
-            e = self.device.read_one()
-            if e.type == ecodes.EV_KEY \
-                and e.value == 0 and e.code == self.scancode:
-                    logger.debug('Trigger: {}'.format(e))
-                    # Execute callback function
-                    if callback and hasattr(callback, '__call__'):
-                        callback()
-                    return True
-        return False
-
-
-    def flush(self):
-        """ Flush event device.
-        """
-
-        logger.debug('Flushing port')
-        while True:
-            r, w, x = select.select([self.device.fd], [], [], 0)
-            if r:
-                self.device.read_one()
-            else:
-                break
-
+            l = self.fifo.readline()
+            self.fifo.flush()
+            logger.debug('Read: {}'.format(l))
 
 
 # Export port_class for port_factory()
-port_class = EvdevButton
+port_class = FIFOScanner
