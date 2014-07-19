@@ -89,12 +89,12 @@ class Config(Base):
     device      = Column(String(16), ForeignKey('devices.id'), nullable=True)
 
 
-    def __init__(self, option, value, device_id=None):
+    def __init__(self, option, value, device=None):
         """ Initialize configuration option with given parameters.
         """
         self.option = option
         self.value = value
-        self.device_id = device_id
+        self.device = device
 
 
     def __repr__(self):
