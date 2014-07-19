@@ -25,8 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" Test Button
-    ===========
+""" Event Device Button
+    ===================
 """
 
 import select
@@ -52,14 +52,13 @@ class EvdevButton(BasePort):
         #. scancode - scancode of trigger key
 
         Full configuration line of evdev button is:
-        ``button=evdev,/path/to/event_device,keycode``
+        ``button=evdev:/path/to/event_device,keycode``
     """
 
 
     def __init__(self, *args):
         """ Initialize port configuration.
         """
-
         self.path = '/dev/input/event0'
         self.scancode = 57
         self.device = None
@@ -69,7 +68,7 @@ class EvdevButton(BasePort):
         if len(args) >= 2:
             self.scancode = int(args[1])
 
-        logger.debug('Evdev button using: {} keycode={}'.format(
+        logger.info('Evdev button using: {} keycode={}'.format(
             self.path, self.scancode))
 
 
@@ -84,7 +83,7 @@ class EvdevButton(BasePort):
     def open(self):
         """ Open event device.
         """
-        logger.debug('Opening evdev {}'.format(self.path))
+        logger.info('Opening evdev {}'.format(self.path))
         self.device = InputDevice(self.path)
         if self.device:
             logger.info('Evdev button found: {}'.format(self.device))
@@ -93,9 +92,10 @@ class EvdevButton(BasePort):
     def close(self):
         """ Close event device.
         """
-        logger.debug('Closing evdev {}'.format(self.path))
+        logger.info('Closing evdev {}'.format(self.path))
         if self.is_open():
             self.device.close()
+            self.device = None
 
 
     def is_open(self):
@@ -124,8 +124,6 @@ class EvdevButton(BasePort):
                     # Execute callback function
                     if callback and hasattr(callback, '__call__'):
                         callback()
-                    return True
-        return False
 
 
     def flush(self):
@@ -139,7 +137,6 @@ class EvdevButton(BasePort):
                 self.device.read_one()
             else:
                 break
-
 
 
 # Export port_class for port_factory()

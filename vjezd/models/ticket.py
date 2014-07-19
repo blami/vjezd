@@ -30,15 +30,15 @@
     ============
 """
 
+import uuid
 from datetime import datetime, timedelta
 import logging
 logger = logging.getLogger(__name__)
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, String, Time, DateTime
+from sqlalchemy import Integer, String, Interval, DateTime
 
-from vjezd import barcode
 from vjezd.db import Base
 
 
@@ -57,7 +57,7 @@ class Ticket(Base):
                         nullable=False)
     used        = Column(DateTime())
     used_device = Column(String(16), ForeignKey('devices.id'))
-    validity    = Column(Time(), nullable=False, default='02:00:00')
+    validity    = Column(Interval(), nullable=False, default='02:00:00')
     cancelled   = Column(DateTime())
 
 
@@ -67,8 +67,8 @@ class Ticket(Base):
         from vjezd.device import device as this_device
         from vjezd.models import Config
 
-        # FIXME in barcode.py
-        self.code = barcode.generate()
+        # Generate the code
+        self.code = Ticket.generate_code()
 
         self.created = datetime.now()
         self.created_device = this_device.id
@@ -84,3 +84,25 @@ class Ticket(Base):
         """
         return '[Ticket {} validity:{} used:{}]'.format(
             self.code, self.validity, self.used)
+
+
+    def expires(self):
+        """ Calculate expiration time.
+        """
+        return self.created + self.validity
+
+
+    @staticmethod
+    def generate_code():
+        """ Generate unique code based on timestamp and node part of UUID.
+        """
+
+        # Node is MAC address of interface, cut first three bytes which are
+        # organization an probably same for all devices
+        node = hex(int(uuid.uuid1().fields[5])).split('x')[1][6:]
+        # NOTE This is naive but sufficient for current application
+        ts = hex(int(datetime.now().strftime('%d%m%y%H%M%S'))).split('x')[1]
+
+        code = '{}{}'.format(ts,node)
+        return code
+

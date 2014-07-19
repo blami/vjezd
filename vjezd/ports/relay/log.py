@@ -57,22 +57,20 @@ class LogRelay(BaseRelay):
         pass
 
 
-    def write(self, data):
+    def activate(self, mode):
         """ Activate relay.
 
             :param data string:     activation mode (print or scan)
         """
-        if data not in ('print', 'scan'):
-            logger.error('Invalid activation mode: {}'.format(data))
-            return
 
         # Get delay
-        delay = self.get_delay(data)
+        delay = self.get_delay(mode)
         logger.info('Waiting configured delay {} seconds'.format(delay))
         time.sleep(delay)
 
         # Activate relay
-        logger.info('Activating relay in {} mode'.format(data))
+        logger.info('Activating relay in {} mode'.format(mode))
+        return True
 
 
 # Export port_class for port_factory()

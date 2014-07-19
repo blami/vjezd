@@ -68,3 +68,26 @@ class BaseRelay(BasePort):
         """
         # FIXME Not in specification
         pass
+
+
+    def write(self, data):
+        """ Convenience write to port method.
+
+            Relay expects print or scan string as data on write. This method
+            just verifies if one of these was passed and calls self.activate
+        """
+        if data not in ('print', 'scan'):
+            raise TypeError('Invalid activation mode {}'.format(data))
+
+        self.activate(data)
+
+
+    def activate(self, mode):
+        """ Activate relay.
+
+            Implementation of this method should activate relay and can trust
+            the mode.
+        """
+        raise NotImplementedError
+
+

@@ -25,87 +25,96 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" FIFO (Named Pipe) Scanner
-    =========================
+""" UNIX Socket Scanner
+    ===================
 """
 
 import os
 import select
+import socket
 import logging
 logger = logging.getLogger(__name__)
 
 from vjezd.ports.base import BasePort
 
 
-class FIFOScanner(BasePort):
-    """ UNIX fifo (named pipe) scanner port.
+class SocketScanner(BasePort):
+    """ UNIX socket scanner port.
 
-        Reads on a configured UNIX fifo for incoming code in ASCII. Every time
-        a code is submitted through UNIX fifo, scanner acts as if code was
-        read. Codes are submitted in plain-text one line ('\\n') per code. If
-        there's a non-line leftover before end of buffer, it's being ignored.
+        Reads on a configured UNIX socket for incoming code. Every time
+        a code is submitted through UNIX socket, scanner acts as if code was
+        read. Codes are submitted in plain-text one line ('\\n') per code.
 
-        UNIX fifo will be created on filesystem. If it already exists, program
-        will fail.
+        UNIX socket family is DGRAM and length of one datagram is 1024B.
+        Code can be sent using following command:
+
+        $ echo -n '1234' | nc -w1 -uU /tmp/vjezd_scanner.sock
+
+        UNIX socket will be created during the port open and destroyed during
+        the port close. If it exists before open program will try to use it.
+
+        Suitable for development.
 
         Configuration
         -------------
         Port accepts the following positional arguments:
-        #. /path/to/fifo - filename of the scanner UNIX fifo
+        #. /path/to/socket - filename of the scanner UNIX fifo
 
         Full configuration line is:
-        ``scanner=fifo,/path/to/fifo``
+        ``scanner=socket:/path/to/socket``
     """
 
     def __init__(self, *args):
         """ Initialize port configuration.
         """
 
-        self.fifo = None
-        self.path = '/tmp/vjezd_scanner_fifo'
+        self.socket = None
+        self.path = '/tmp/vjezd_scanner.sock'
         if(len(args) > 0):
             self.path = args[0]
 
-        logger.debug('Scanner is using UNIX fifo: {}'.format(self.path))
+        logger.debug('Scanner is using UNIX socket: {}'.format(self.path))
 
 
     def test(self):
-        """ Test if configured UNIX fifo can be created/opened.
+        """ Test if configured UNIX socket can be created/opened.
         """
         # FIXME
         pass
 
 
     def open(self):
-        """ Create and open UNIX fifo.
+        """ Open UNIX socket.
         """
-        logger.debug('Opening UNIX fifo: {}'.format(self.path))
-        os.mkfifo(self.path)
-        # Create fifo non-blocking (don't wait for other side)
-        fd = os.open(self.path, os.O_RDONLY | os.O_NONBLOCK)
-        self.fifo = os.fdopen(fd)
+        logger.info('Opening UNIX socket: {}'.format(self.path))
+
+        # Open non-blocking socket and bind it to UNIX special file
+        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        self.socket.bind(self.path)
+        self.socket.setblocking(0)
 
 
     def close(self):
-        """ Close and destroy UNIX fifo.
+        """ Close and destroy UNIX socket.
         """
-        logger.debug('Closing UNIX fifo: {}'.format(self.path))
+        logger.info('Closing UNIX socket: {}'.format(self.path))
         if self.is_open:
-            self.fifo.close()
-            logger.debug('Removing UNIX fifo filesystem object')
+            self.socket.close()
+            self.socket = None
+            logger.debug('Removing UNIX socket file: {}'.format(self.path))
             os.remove(self.path)
 
 
     def is_open(self):
-        """ Check whether the UNIX fifo is open.
+        """ Check whether the UNIX socket is open.
         """
-        if self.fifo:
+        if self.socket:
             return True
         return False
 
 
     def read(self, callback=None):
-        """ Read UNIX fifo.
+        """ Read UNIX socket.
 
             If code is detected a function assigned to callback argument is
             run.
@@ -113,12 +122,27 @@ class FIFOScanner(BasePort):
         # In order to avoid bare polling a select() is called on device
         # descriptor with a reasonable timeout so the thread can be
         # interrupted. In case of event read we will read and process it.
-        r, w, x = select.select([self.fifo.fileno()], [], [], 1)
+        r, w, x = select.select([self.socket], [], [], 1)
         if r:
-            l = self.fifo.readline()
-            self.fifo.flush()
-            logger.debug('Read: {}'.format(l))
+            data = self.socket.recv(1024)
+            if data:
+                data = data.decode('ascii')
+                logger.debug('Received data: {}'.format(data))
+                if callback and hasattr(callback, '__call__'):
+                    callback(data)
+
+
+    def flush(self):
+        """ Flush UNIX socket.
+        """
+        logger.debug('Flushing UNIX socket')
+        while True:
+            r, w, x = select.select([self.socket], [], [], 0)
+            if r:
+                self.socket.recv(1024)
+            else:
+                break
 
 
 # Export port_class for port_factory()
-port_class = FIFOScanner
+port_class = SocketScanner

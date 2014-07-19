@@ -39,8 +39,8 @@ from vjezd.ports.base import BasePort
 class LogPrinter(BasePort):
     """ Log printer.
 
-        Log relay will just do INFO level log entry on event of printing a
-        ticket. Ticket code and validity is logged.
+        Log printer will just do INFO level log entry on event of printing a
+        ticket.
 
         Configuration
         -------------
@@ -48,7 +48,7 @@ class LogPrinter(BasePort):
     """
 
     def __init__(self, *args):
-        logger.debug('Log printer initialized')
+        logger.info('Log printer using: INFO')
 
 
     def test(self):
@@ -63,9 +63,9 @@ class LogPrinter(BasePort):
             :param data Ticket:         Ticket object to be printed
         """
         if isinstance(data, Ticket):
-            logger.info('Printing ticket: {}'.format(data))
-        else:
-            logger.error('Obtained data is not ticket: {}'.format(data))
+            raise TypeError('Not a Ticket object')
+
+        logger.info('Printing ticket: {}'.format(data))
 
 
 # Export port_class for port_factory()

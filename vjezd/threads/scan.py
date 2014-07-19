@@ -32,8 +32,12 @@
 import logging
 logger = logging.getLogger(__name__)
 
+from vjezd import db
+from vjezd.models import Ticket
 from vjezd.threads.base import BaseThread
 from vjezd.ports import port
+
+
 
 class ScanThread(BaseThread):
     """ A class representing print mode thread.
@@ -49,12 +53,35 @@ class ScanThread(BaseThread):
         """ Callback function for scanner port read event.
 
             Once the code is scanned the following actions are done:
-            #. Verify opening hours
+            #. Check opening hours
             #. Check if code is valid
             #. If valid use it
             #. Activate relay in scan mode
             #. Flush scanner port to ignore queued events (while relay open)
         """
-        logger.info('Code scanned {}')
+        logger.info('Code scanned: {}'.format(data))
 
-        logger.debug(data)
+        # Check hours
+        if not self.check_hours():
+            logger.warning('Even past opening hours. Ignoring')
+            return
+
+        # Validate ticket
+        ticket = Ticket.validate(data)
+        if not ticket:
+            # FIXME some signalization to user?
+            logger.info('Invalid ticket. Ignoring')
+            return
+
+        # If ticket is valid use ticket
+        ticket.use()
+        db.session.commit()
+
+        # Activate relay
+        port('relay').write('scan')
+
+        # Ignore all events queued during the relay period
+        # NOTE This avoids other tickets being used before the gate closes
+        port('scanner').flush()
+
+

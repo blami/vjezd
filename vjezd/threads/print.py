@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 #from sqlalchemy.exc import SQLAlchemyError
 
-from vjezd.db import session
+from vjezd import db
 from vjezd.models import Ticket
 from vjezd.threads.base import BaseThread
 from vjezd.ports import port
@@ -62,7 +62,7 @@ class PrintThread(BaseThread):
         """ Callback function for button port read event.
 
             Once the button is pressed following actions are done:
-            #. Verify opening hours
+            #. Check opening hours
             #. If open, generate new ticket and print it
             #. Once printed activate relay in print mode
             #. Flush button port to ignore queued events (while relay open)
@@ -71,13 +71,13 @@ class PrintThread(BaseThread):
 
         # Check hours
         if not self.check_hours():
-            logger.warning('Request past opening hours. Ignored')
+            logger.warning('Event past opening hours. Ignoring')
             return
 
         # Create new ticket
         ticket = Ticket()
-        session.add(ticket)
-        session.commit()
+        db.session.add(ticket)
+        db.session.commit()
 
         port('printer').write(ticket)
         port('relay').write('print')
