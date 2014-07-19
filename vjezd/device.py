@@ -118,8 +118,8 @@ def init(id=None, mode=None):
         # Update device
         device.last_seen(mode, get_ip())
 
-        # Commit changes
-        db.session.commit()
+        # Commit changes (autocommit)
+        #db.session.commit()
 
     except SQLAlchemyError as err:
         logger.critical('Unable to get device object: {}!'.format(err))

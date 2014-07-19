@@ -77,7 +77,7 @@ class PrintThread(BaseThread):
         # Create new ticket
         ticket = Ticket()
         db.session.add(ticket)
-        db.session.commit()
+        #db.session.commit() # autocommit
 
         port('printer').write(ticket)
         port('relay').write('print')

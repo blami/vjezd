@@ -41,6 +41,7 @@ from reportlab.lib.units import mm
 from reportlab.graphics.barcode import createBarcodeDrawing
 
 from vjezd.models import Ticket
+from vjezd.models import Config
 from vjezd.ports.base import BasePort
 
 
@@ -53,39 +54,42 @@ class PDFPrinterTestError(Exception):
 class PDFPrinter(BasePort):
     """ PDF printer.
 
-        Prints ticket of given size as a PDF to file in specified directory.
+        Prints ticket of given size as a PDF to file in specified path.
 
         Configuration
         -------------
         Port accepts the following positional arguments:
         #. width - ticket width in milimeters
+        #. height - ticket height in milimeters
         #. /path/to/pdf - path to pdf file
 
         Full configuration line of PDF printer is:
-        ``printer=pdf:width,/path/to/pdf
+        ``printer=pdf:width,height,/path/to/pdf
     """
 
     def __init__(self, *args):
         """ Initialize PDF printer.
         """
         self.width = 72
-        self.height = 35
+        self.height = 80
         self.pdf_path = '/tmp/vjezd_ticket.pdf'
 
         if len(args) >= 1:
             self.width = int(args[0])
         if len(args) >= 2:
-            self.pdf_path = args[1]
+            self.height = int(args[1])
+        if len(args) >= 3:
+            self.pdf_path = args[2]
 
-        logger.info('PDF printer using: {} width={}mm'.format(
-            self.pdf_path, self.width))
+        logger.info('PDF printer using: {} size={}x{}mm'.format(
+            self.pdf_path, self.width, self.height))
 
 
     def test(self):
         """ Test whether is possible to write PDF file to spool.
         """
         if not os.access(self.pdf_path, os.W_OK):
-            raise PDFPrinterTestError('Cannot write PDFs to {}'.format(
+            raise PDFPrinterTestError('Cannot write PDF to {}'.format(
                 self.pdf_path))
 
 
@@ -105,37 +109,45 @@ class PDFPrinter(BasePort):
             :return:                path to output PDF
         """
 
+        # Get configurable text
+        title_text = _(Config.get('ticket_title', None))
+
         # Setup styles
         styles = getSampleStyleSheet()
 
         doc = SimpleDocTemplate(self.pdf_path,
-            pagesize=(self.width*mm, letter[1]),
-            topMargin=0,
-            rightMargin=0, #(letter[0] - self.width*mm),
-            bottomMargin=0,
-            leftMargin=0)
+            pagesize=(self.width*mm, self.height*mm),
+            topMargin=5*mm,
+            rightMargin=2*mm, #(letter[0] - self.width*mm),
+            bottomMargin=5*mm,
+            leftMargin=2*mm)
 
         # Build document contents
         story = []
 
+        if title_text:
+            story.append(Paragraph('{}'.format(title_text), styles['Title']))
+
         # Creation and expiration date
-        story.append(Paragraph('Vydano: {}'.format(
-            ticket.created.strftime('%d.%m.%Y %H:%M')),
-            styles['Normal']))
-        story.append(Paragraph('Platnost do: {}'.format(
+        story.append(Paragraph('{}: {}<br/>{}: {}'.format(
+            _('Cas vydani'),
+            ticket.created.strftime('%d.%m.%Y %H:%M'),
+            _('Platnost do'),
             ticket.expires().strftime('%d.%m.%Y %H:%M')),
             styles['Normal']))
 
         story.append(Spacer(width=1, height=5*mm))
 
         # Barcode (Extended39)
-        barcode = createBarcodeDrawing('Extended39',
+        story.append(createBarcodeDrawing('Extended39',
             value=ticket.code,
             checksum=0,
-            barHeight=self.height*mm,
-            )
+            quiet=False,        # don't use quiet zones on left and right
+            barWidth=0.26*mm,
+            barHeight=30*mm))
 
-        story.append(barcode)
+        story.append(Paragraph('<para alignment="center">{}</para>'.format(
+            ticket.code), styles['Normal']))
 
         doc.build(story)
 

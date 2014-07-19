@@ -75,7 +75,7 @@ def init():
     engine = create_engine(ci)
     # NOTE See: http://flask.pocoo.org/docs/patterns/sqlalchemy/
     session = scoped_session(sessionmaker(
-        autocommit=False,
+        autocommit=True,
         autoflush=True,
         bind=engine))
 

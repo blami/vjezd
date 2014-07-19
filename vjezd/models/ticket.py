@@ -101,8 +101,9 @@ class Ticket(Base):
         # organization an probably same for all devices
         node = hex(int(uuid.uuid1().fields[5])).split('x')[1][6:]
         # NOTE This is naive but sufficient for current application
-        ts = hex(int(datetime.now().strftime('%d%m%y%H%M%S'))).split('x')[1]
+        ts = hex(int(datetime.now().strftime('%S%M%H%y%m%d'))).split('x')[1]
 
-        code = '{}{}'.format(ts,node)
+        # Final code, add separator
+        code = '{}{}'.format(ts.upper(), node.upper())
         return code
 

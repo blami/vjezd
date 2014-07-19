@@ -36,6 +36,7 @@
     validity                    ticket validity (minutes)
     relay_print_delay           relay activation delay in print (seconds)
     relay_scan_delay            relay activation delay in scan (seconds)
+    ticket_title                Title on ticket (e.g. device name)
     ==========================  ===============================================
 """
 

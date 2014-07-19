@@ -141,10 +141,11 @@ def port_factory(port_name):
         module = importlib.import_module('{}'.format(path))
         obj = getattr(module, 'port_class')
         inst = obj(*args)
-    except (ImportError, AttributeError) as err:
-        logger.error('Cannot import port {} module: {}! Skipping'.format(
+    except Exception as err:
+        # Fail when cannot import configured module
+        logger.critical('Cannot import port {} module: {}'.format(
             port_name, err))
-        return None
+        crit_exit(4, err)
 
     # Instance must be of BasePort type
     from vjezd.ports.base import BasePort

@@ -32,6 +32,7 @@ import os
 import sys
 import signal
 import getopt
+import gettext
 import logging
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,9 @@ if not APP_DIR or not os.path.isdir(APP_DIR):
 APP_NAME = os.path.basename(os.path.splitext(sys.argv[0])[0])
 # Application version
 APP_VER = __version__
+
+# Localization
+gettext.install(APP_NAME, os.path.join(APP_DIR))
 
 
 def help():

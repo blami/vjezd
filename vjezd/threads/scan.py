@@ -75,7 +75,7 @@ class ScanThread(BaseThread):
 
         # If ticket is valid use ticket
         ticket.use()
-        db.session.commit()
+        #db.session.commit() # autocommit
 
         # Activate relay
         port('relay').write('scan')
