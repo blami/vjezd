@@ -108,7 +108,7 @@ class CUPSPrinter(PDFPrinter):
         else:
             printer = conn.getDefault()
         if not printer:
-            raise CUPSPrinterError('Non-existent CUPS printer: {}'.format(
+            raise CUPSPrinterTestError('Non-existent CUPS printer: {}'.format(
                 self.cups_printer_name or 'default'))
         conn = None
 
