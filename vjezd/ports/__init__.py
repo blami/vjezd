@@ -103,7 +103,7 @@ def close_ports():
     """
     logger.debug('Closing ports')
     for p in ports:
-        if ports[p].is_open():
+        if ports[p] and ports[p].is_open():
             ports[p].close()
 
 
