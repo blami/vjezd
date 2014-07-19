@@ -114,7 +114,7 @@ class Config(Base):
             :param fallback:        fallback value used in case the given
                                     option doesn't exists or its value is None
         """
-        from vjezd.device import device as this_device
+        from vjezd import device as this_device
 
         o = Config.query.filter(
             # only rules valid for this device

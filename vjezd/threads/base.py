@@ -33,6 +33,7 @@ import threading
 import logging
 logger = logging.getLogger(__name__)
 
+from vjezd import db
 from vjezd import crit_exit
 from vjezd import threads
 

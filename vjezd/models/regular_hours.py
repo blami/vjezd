@@ -80,7 +80,7 @@ class RegularHours(Base):
             :return:                True if at least one matching rule was
                                     found otherwise False
         """
-        from vjezd.device import device as this_device
+        from vjezd import device as this_device
 
         t = datetime.now()
 

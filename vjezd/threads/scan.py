@@ -38,7 +38,6 @@ from vjezd.threads.base import BaseThread
 from vjezd.ports import port
 
 
-
 class ScanThread(BaseThread):
     """ A class representing print mode thread.
     """
@@ -63,7 +62,9 @@ class ScanThread(BaseThread):
 
         # Check hours
         if not self.check_hours():
-            logger.warning('Even past opening hours. Ignoring')
+            logger.warning('Event past opening hours. Ignoring')
+
+            db.session.remove()
             return
 
         # Validate ticket
@@ -71,17 +72,20 @@ class ScanThread(BaseThread):
         if not ticket:
             # FIXME some signalization to user?
             logger.info('Invalid ticket. Ignoring')
+
+            db.session.remove()
             return
 
         # If ticket is valid use ticket
         ticket.use()
-        #db.session.commit() # autocommit
 
         # Activate relay
         port('relay').write('scan')
 
+        # Commit DB transaction once ticket is succesfully used
+        db.session.commit()
+        db.session.remove()
+
         # Ignore all events queued during the relay period
         # NOTE This avoids other tickets being used before the gate closes
         port('scanner').flush()
-
-

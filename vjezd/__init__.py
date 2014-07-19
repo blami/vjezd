@@ -77,12 +77,11 @@ Usage: {appname} [options]
 Available options:
 (Mandatory arguments to long options are mandatory for short options too. Using
 command line arguments overrides configuration file options.)
-    --create-db             force the database to be re-created from scratch
-                            WARNING: ALL EXISTING DATA WILL BE LOST!
 -l, --log=FILENAME          path to log file, might be also syslog or stderr
 -c, --config=FILENAME       path to configuration file
 -m, --mode=MODE             device operation mode (scan, print, both, auto)
 -i, --id=ID                 device identifier
+-F, --factory               restore factory settings in DB table config
 -v, --verbose               increase verbosity, can be used multiple times
 -h, --help                  show this short help message and exit
 -V, --version               show version information and exit
@@ -133,6 +132,11 @@ def crit_exit(code=1, err=None, force_thread=False):
         :param err Error:           Exception object
         :param is_thread bool:      Force thread behavior (for vjezd.threads)
     """
+
+    # Rollback the transaction during which the problem happened
+    from vjezd import db
+    db.session.rollback()
+    db.session.remove()
 
     # If possible log also relevant traceback
     tb = None
@@ -189,15 +193,17 @@ def main(args):
     opt_conf = None
     opt_mode = None
     opt_id = None
+    opt_factory = False
 
     # Process command line arguments
     try:
         opts, args = getopt.gnu_getopt(args,
-            'l:c:m:i:vhV', [
+            'l:c:m:i:FvhV', [
                 'log=',
                 'conf=',
                 'mode=',
                 'id=',
+                'factory',
                 'verbose',
                 'help',
                 'version'])
@@ -218,6 +224,8 @@ def main(args):
             opt_mode=arg.lower()
         elif opt in ('-i', '--id'):
             opt_id=arg
+        elif opt in ('-F', '--factory'):
+            opt_factory=True
         elif opt in ('-v', '--verbose'):
             # verbosity maps to logging log level numeric values (default: 40)
             if opt_loglevel is None:

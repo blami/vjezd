@@ -75,8 +75,8 @@ def init():
     engine = create_engine(ci)
     # NOTE See: http://flask.pocoo.org/docs/patterns/sqlalchemy/
     session = scoped_session(sessionmaker(
-        autocommit=True,
-        autoflush=True,
+        autocommit=False,
+        autoflush=False,
         bind=engine))
 
     # Create declarative Base class for models
@@ -88,7 +88,11 @@ def init():
         # Import all models and create/extend non-existent tables in DB
         # NOTE all models must be imported in models/__init__.py
         import vjezd.models
+
         Base.metadata.create_all(bind=engine)
+
+        session.commit()
+        session.remove()
 
     except SQLAlchemyError as err:
         logger.critical('Unable to access DB: {}'.format(err))
@@ -100,9 +104,6 @@ def init():
 def finalize():
     """ Close the database connection.
     """
-    if 'session' in globals():
-       session.remove()
-
     logger.debug('DB connection closed')
 
 

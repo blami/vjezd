@@ -38,12 +38,24 @@ logger = logging.getLogger(__name__)
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer, String, Interval, DateTime
+from sqlalchemy.sql import func
 
 from vjezd.db import Base
 
 
 class Ticket(Base):
     """ Ticket.
+
+        :ivar id integer:           ticket identifier
+        :ivar code string:          code printed on ticket
+        :ivar created DateTime:     timestamp of ticket creation
+        :ivar created_device Device: reference to device where ticket was
+                                    printed
+        :ivar used DateTime:        timestamp of ticket use
+        :ivar used_device Device:   reference to device where ticket was
+                                    scanned and used
+        :ivar validity Interval:    interval of ticket validity
+        :ivar cancelled DateTime:   timestamp of ticket cancellation
     """
 
     __tablename__ = 'tickets'
@@ -64,7 +76,7 @@ class Ticket(Base):
     def __init__(self):
         """ Initialize new ticket with given validity period.
         """
-        from vjezd.device import device as this_device
+        from vjezd import device as this_device
         from vjezd.models import Config
 
         # Generate the code
@@ -92,11 +104,19 @@ class Ticket(Base):
         return self.created + self.validity
 
 
+    def use(self):
+        """ Mark ticket as used.
+        """
+        from vjezd import device as this_device
+
+        self.used = datetime.now()
+        self.used_device = this_device.id
+
+
     @staticmethod
     def generate_code():
         """ Generate unique code based on timestamp and node part of UUID.
         """
-
         # Node is MAC address of interface, cut first three bytes which are
         # organization an probably same for all devices
         node = hex(int(uuid.uuid1().fields[5])).split('x')[1][6:]
@@ -107,3 +127,47 @@ class Ticket(Base):
         code = '{}{}'.format(ts.upper(), node.upper())
         return code
 
+
+    @staticmethod
+    def validate(code):
+        """ Validate given code against ticket database.
+
+            Check if code belongs to ticket which is still valid, non-used and
+            non-cancelled. If such ticket exists return its object otherwise
+            None.
+
+            :param code string:     code to validate
+            :return:                if valid ticket found then its Ticket
+                                    object or None.
+        """
+        from vjezd import device as this_device
+
+        t = datetime.now()
+
+        # In DB is only one or zero tickets with given code
+        ticket = Ticket.query.filter(Ticket.code == code).first()
+
+        # Do detailed validation
+        retval = ticket
+        if ticket:
+            logger.debug('Found {}'.format(ticket))
+            # Check validity rules
+            if ticket.used:
+                logger.warning('Ticket {} already used {}'.format(
+                    code, ticket.used.strftime('%Y-%m-%d %H:%M:%S')))
+                retval = None
+            if ticket.cancelled:
+                logger.warning('Ticket {} cancelled {}'.format(
+                    code, ticket.cancelled.strftime('%Y-%m-%d %H:%M:%S')))
+                retval = None
+            if ticket.expires() < t:
+                logger.warning('Ticket {} expired {}'.format(
+                    code, ticket.expires().strftime('%Y-%m-%d %H:%M:%S')))
+                retval = None
+
+            if retval:
+                logger.info('Ticket {} is valid'.format(code))
+        else:
+            logger.warning('Ticket {} does not exitst'.format(code))
+
+        return retval

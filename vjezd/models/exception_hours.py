@@ -82,7 +82,7 @@ class ExceptionHours(Base):
                                     matching rule with highest identifier,
                                     otherwise None.
         """
-        from vjezd.device import device as this_device
+        from vjezd import device as this_device
         t = datetime.now()
 
         exception_hours = ExceptionHours.query.filter(

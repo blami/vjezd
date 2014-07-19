@@ -47,6 +47,10 @@ class Device(Base):
         and third party applications using same database. Each device is
         expected to create/update its own record once initialized.
 
+        This table is considered to be read only. Any external changes will not
+        be used in running instance (as it manages device internally) and will
+        probably get overwriten during next startup.
+
         Fields
         ------
         :ivar id string:            device identifier read from configuration
@@ -80,21 +84,24 @@ class Device(Base):
         return '[Device id:{} mode:{}]'.format(self.id, self.last_mode)
 
 
-    def last_seen(self, mode, ip):
+    @staticmethod
+    def last_seen(id, mode, ip):
         """ Update last seen information about the device.
         """
-        self.last_mode = mode
-        self.last_ip = ip
-        self.last__seen = datetime.now()
+        # NOTE Cannot use this_device stanza here because last_seen is called
+        # just once from device initializer.
 
+        # FIXME There should be mechanism that verifies device UUID at moment
+        # we simply trust the setup there are no two devices configured with
+        # same id.
+        device = Device.query.filter(Device.id == id).first()
 
-    @property
-    def modes(self):
-        """ A tuple of all modes the device operates. Pseudo mode 'both' is
-            evaluated to tuple of both real modes 'print' and 'scan'.
-        """
-        if self.last_mode == 'both':
-            return ('print', 'scan')
-        else:
-            return (self.last_mode)
+        if not device:
+            # Create device record as it does not exist yet.
+            logger.warning('Device {} DB record not found. Created'.format(id))
+            device = Device(id)
+            db.session.add(device)
 
+        device.last_mode = mode
+        device.last_ip = ip
+        device.last__seen = datetime.now()

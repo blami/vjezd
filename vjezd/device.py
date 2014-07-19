@@ -47,12 +47,14 @@ from vjezd import db
 from vjezd.models import Device
 
 
-def init(id=None, mode=None):
+def init(_id=None, mode=None):
     """ Initialize the device.
     """
     logger.debug('Initializing device')
 
     # Determine device identifier
+    global id
+    id = _id
     if not id:
         id = conffile.get('device', 'id')
     if not id:
@@ -99,42 +101,31 @@ def init(id=None, mode=None):
 
         logger.info('Device mode: {}'.format(mode))
 
-    # Get device model
-    try:
-        global device
-        device = Device.query.filter(Device.id == id).first()
-
-        # FIXME There should be mechanism that verifies device UUID at moment
-        # we simply trust the setup there are no two devices configured with
-        # same id.
-
-        if not device:
-            # Create device record as it does not exist yet.
-            logger.warning('Device {} DB record does not exist'.format(id))
-            device = Device(id)
-
-            db.session.add(device)
-
-        # Update device
-        device.last_seen(mode, get_ip())
-
-        # Commit changes (autocommit)
-        #db.session.commit()
-
-    except SQLAlchemyError as err:
-        logger.critical('Unable to get device object: {}!'.format(err))
-        crit_exit(3, err)
+    # Store real modes
+    global modes
+    if mode == 'both':
+        modes = ('print', 'scan')
+    else:
+        modes = (mode)
 
     # Open the device ports
     ports.open_ports(dep[mode])
 
-    logger.debug('Device {} initialized.'.format(id))
+    # Update device tracking table
+    try:
+        Device.last_seen(id, mode, get_ip())
 
+        db.session.commit()
+        db.session.remove()
+    except Exception as err:
+        logger.critical('Unable update device record {}!'.format(err))
+        crit_exit(3, err)
+
+    logger.debug('Device {} initialized.'.format(id))
 
 def finalize():
     """ Finalize device.
     """
-
     ports.close_ports()
 
 
@@ -153,4 +144,5 @@ def get_ip():
 def get_uuid():
     """ Get an unique identifier of the system.
     """
+    # TODO
     pass

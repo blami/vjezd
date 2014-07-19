@@ -60,13 +60,13 @@ def run():
     """
     # Avoid circular dependencies
     from vjezd import crit_exit, exit
-    from vjezd import device
+    from vjezd import device as this_device
     from vjezd.threads.print import PrintThread
     from vjezd.threads.scan import ScanThread
 
-    if 'print' in device.device.modes:
+    if 'print' in this_device.modes:
         threads.append(PrintThread())
-    if 'scan' in device.device.modes:
+    if 'scan' in this_device.modes:
         threads.append(ScanThread())
 
     for t in threads:

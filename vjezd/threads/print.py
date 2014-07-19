@@ -72,17 +72,20 @@ class PrintThread(BaseThread):
         # Check hours
         if not self.check_hours():
             logger.warning('Event past opening hours. Ignoring')
+
+            db.session.remove()
             return
 
         # Create new ticket
         ticket = Ticket()
         db.session.add(ticket)
-        #db.session.commit() # autocommit
 
         port('printer').write(ticket)
         port('relay').write('print')
 
+        # Commit DB transaction once ticket is successfuly issued
+        db.session.commit()
+        db.session.remove()
+
         # Ignore all events queued during the relay period
         port('button').flush()
-
-
