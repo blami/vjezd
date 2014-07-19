@@ -73,6 +73,8 @@ class SocketScanner(BasePort):
         if(len(args) > 0):
             self.path = args[0]
 
+        self._is_open = False
+
         logger.debug('Scanner is using UNIX socket: {}'.format(self.path))
 
 
@@ -92,6 +94,7 @@ class SocketScanner(BasePort):
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         self.socket.bind(self.path)
         self.socket.setblocking(0)
+        self._is_open = True
 
 
     def close(self):
@@ -100,7 +103,7 @@ class SocketScanner(BasePort):
         logger.info('Closing UNIX socket: {}'.format(self.path))
         if self.is_open:
             self.socket.close()
-            self.socket = None
+            self._is_open = False
             logger.debug('Removing UNIX socket file: {}'.format(self.path))
             os.remove(self.path)
 
@@ -108,9 +111,7 @@ class SocketScanner(BasePort):
     def is_open(self):
         """ Check whether the UNIX socket is open.
         """
-        if self.socket:
-            return True
-        return False
+        return self._is_open
 
 
     def read(self, callback=None):
