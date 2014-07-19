@@ -41,6 +41,7 @@
 """
 
 import sys
+from datetime import time
 import logging
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ from vjezd import crit_exit
 from vjezd import conffile
 
 
-def init():
+def init(factory=False):
     """ Initialize the database connection.
     """
     logger.debug('Initializing DB connection')
@@ -90,6 +91,7 @@ def init():
         import vjezd.models
 
         Base.metadata.create_all(bind=engine)
+        install_schema(factory)
 
         session.commit()
         session.remove()
@@ -126,6 +128,44 @@ def install_schema(factory=False):
 
         Create default values and constants in fresh schema tables.
 
-        :param factory boolean:         Factory reset all defaults
+        :param factory boolean:         restore factory defaults (destructive)
     """
-    pass
+    from vjezd.models import Config
+    from vjezd.models import RegularHours
+    from vjezd.models import ExceptionHours
+
+    # Config
+    options = {
+        'validity': '120',
+        'relay_print_delay': '10',
+        'relay_scan_delay': '30'
+    }
+    for o in options:
+        # In case of duplicates (device == NULL) take the highest id
+        conf = Config.query.filter(
+            Config.option == o,
+            Config.device == None
+            ).order_by(Config.id.desc()).first()
+
+        if not conf:
+            logger.warning('Factory setting {} not found. Created'.format(o))
+            conf = Config(o, options[o])
+            session.add(conf)
+
+        else:
+            if factory and conf.value != options[o]:
+                logger.warning('Restoring factory setting {}'.format(o))
+                conf.value = options[o]
+
+
+    # Regular hours
+    # NOTE Default opening hours are installed only in case of factory
+    # restoration
+    if factory:
+        logger.warning('Restoring factory opening hours (workdays 9-17)')
+        RegularHours.query.delete()
+        ExceptionHours.query.delete()
+
+        # Default is workdays 9-17
+        reg_hours = RegularHours(7, time(hour=9), time(hour=17))
+        session.add(reg_hours)

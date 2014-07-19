@@ -73,6 +73,15 @@ class RegularHours(Base):
     time_end    = Column(Time())
 
 
+    def __init__(self, day_of_week, time_start, time_end, device=None):
+        """ Initialize new regular opening hours rule.
+        """
+        self.day_of_week = day_of_week
+        self.time_start = time_start
+        self.time_end = time_end
+        self.device = device
+
+
     @staticmethod
     def check():
         """ Check whether currently are regular hours and device should act.
