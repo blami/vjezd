@@ -42,8 +42,9 @@ from vjezd.ports.base import BasePort
 class EvdevButton(BasePort):
     """ Event device button port.
 
-        Event device button port reads keypress events on specified event
-        device special file.
+        Event device button port reads keyup events from the specified event
+        device special file representing keyboard. A given keycode acts as
+        a button.
 
         Configuration
         -------------
