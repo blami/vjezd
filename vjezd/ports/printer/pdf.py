@@ -139,16 +139,20 @@ class PDFPrinter(BasePort):
         story.append(Spacer(width=1, height=5*mm))
 
         # Barcode (Extended39)
-        story.append(createBarcodeDrawing('Extended39',
+        barcode = createBarcodeDrawing('Extended39',
             value=ticket.code,
             checksum=0,
             quiet=False,        # don't use quiet zones on left and right
-            barWidth=0.26*mm,
-            barHeight=30*mm))
+            barWidth=0.25*mm,
+            barHeight=30*mm,
+            humanReadable = True)
 
-        story.append(Paragraph('<para alignment="center">{}</para>'.format(
-            ticket.code), styles['Normal']))
+        # Scale barcode down to fit the page
+        s = float(self.width*mm - 8*mm)  / float(barcode.width)
+        barcode.scale(s, s)
+        story.append(barcode)
 
+        # Save the PDF
         doc.build(story)
 
 
