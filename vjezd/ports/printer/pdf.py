@@ -136,10 +136,10 @@ class PDFPrinter(BasePort):
             ticket.expires().strftime('%d.%m.%Y %H:%M')),
             styles['Normal']))
 
-        story.append(Spacer(width=1, height=5*mm))
+        story.append(Spacer(width=1, height=10*mm))
 
-        # Barcode (Extended39)
-        barcode = createBarcodeDrawing('Extended39',
+        # Barcode (Standard39)
+        barcode = createBarcodeDrawing('Standard39',
             value=ticket.code,
             checksum=0,
             quiet=False,        # don't use quiet zones on left and right

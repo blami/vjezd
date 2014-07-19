@@ -123,8 +123,8 @@ class Ticket(Base):
         # NOTE This is naive but sufficient for current application
         ts = hex(int(datetime.now().strftime('%S%M%H%y%m%d'))).split('x')[1]
 
-        # Final code, add separator
-        code = '{}{}'.format(ts.upper(), node.upper())
+        # Final code, add separator and make it uppercase
+        code = '{}{}'.format(ts,node).upper()
         return code
 
 
