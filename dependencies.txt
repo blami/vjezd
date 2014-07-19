@@ -2,4 +2,5 @@ Pillow==2.5.1
 SQLAlchemy==0.9.6
 evdev==0.4.5
 mysql-connector-python==1.2.2
+pycups==1.9.67
 reportlab==3.1.8
