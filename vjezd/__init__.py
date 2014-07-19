@@ -81,7 +81,8 @@ command line arguments overrides configuration file options.)
 -c, --config=FILENAME       path to configuration file
 -m, --mode=MODE             device operation mode (scan, print, both, auto)
 -i, --id=ID                 device identifier
--F, --factory               restore factory settings in DB table config
+-F, --factory               restore factory settings in DB tables
+                            WARNING: This option may DELETE your settings
 -v, --verbose               increase verbosity, can be used multiple times
 -h, --help                  show this short help message and exit
 -V, --version               show version information and exit
@@ -253,7 +254,7 @@ def main(args):
 
     # Initialize logging and DB (create session and Base class)
     log.init(opt_logfile, opt_loglevel)
-    db.init()
+    db.init(opt_factory)
 
     # Import the rest of application modules
     from vjezd import ports
