@@ -1,0 +1,123 @@
+System Image
+************
+
+Deployment of the application is done by writing the `system image` file onto a
+SD card. As every device must have unique identifier and might have different
+settings, the `imagebuilder.py` script is provided to prepare `system image`
+for given device. Usage of this script is described below.
+
+As both `imagebuilder.py` and dd commands touch devices or use `mount` command
+they need to be run with `root` privileges.
+
+The `imagebuilder.py` command is inteded to run on your computer, not the
+target device.
+
+Once the image is prepared it can be copied using following command:
+
+.. code-block:: bash
+
+    dd if=/path/to/image of=/dev/mmcblk0 bs=4M
+
+NOTE: use real `/path/to/image` and SD card device name. Image must be written
+to SD card raw device, not partition (e.g. no `mmcblk0p1`).
+
+System image partitions take 2GB. Root partition can be grown later. See:
+http://www.raspberrypi.org/forums/viewtopic.php?f=51&t=45265
+
+Preparing System Image
+======================
+.. code-block:: bash
+
+    ./imagebuild.py \
+        --id vjezd1 \
+        --mode auto \
+        --port-button rpigpio,17 \
+        --port-printer cups \
+        --port-relay rpigpio,21 \
+        --port-scanner evdev,/dev/input/by-id/usb-Honeywell-KBD1 \
+        --run-db-server \
+        --db-host 127.0.0.1 \
+        --db-dbname vjezd \
+        --db-user vjezd \
+        --db-password vjezd
+
+This will unzip and copy vjezd-<ID>.img and using `kpartx` mounts it. Then it
+will create `vjezd.conf` according to the set options and write it into image's
+`/opt/vjezd/vjezd.conf`.
+
+MySQL Server
+------------
+If `--run-db-server` is set it will also unshadow mysql-server by removing
+`/dev/null` link from `/etc/systemd/system/mysql.service` which will cause
+fallback to the traditional LSB init script.
+
+Pre-installed MySQL server has `root` password set to `raspberry` and DB
+`vjezd` is already created (empty) as well as granted user `vjezd` with
+password `vjezd`.
+
+If you ever decide to stop using device as MySQL server, first migrate DB (if
+required) to other host. Reconfigure all devices by either manually editing
+their `vjezd.conf` files or rewriting their SD-cards with newly generated
+images (recommended) and then issue (on device) following command as `root`:
+
+.. code-block:: bash
+
+    ln -s /dev/null /etc/systemd/system/mysql.service
+
+and reboot the device by unplugging and plugging it back.
+
+STAR TSP-143 Driver
+-------------------
+Image contains compiled sources of `STAR TSP-143` thermal printer drivers. If
+upgrade is required, download new driver TAR.GZ bundle, unzip it in
+`/opt/starcupsdrv` and:
+
+#. Compile the driver using `make` command
+#. DON'T RUN `bin/setup`
+#. Copy files `rastertostar` and `rastertostarlm` from `bin/` to
+    `/usr/lib/cups/filters` and ensure they're executable
+#. Copy gzipped ppd files (all of them) to `/usr/share/ppd/star`
+#. Restart `CUPS` by issuing:
+
+.. code-block:: bash
+
+    systemctl restart cups
+
+Additional Configuration
+========================
+Once the device boots system image from the SD card. Some additional
+configuration might be done.
+
+CUPS
+----
+`CUPS` in the system image is configured in way the user `pi` can add printers
+while the `vjezd` application is configured it uses default printer which is
+PDF printer dropping files to `/var/spool/cups-pdf/vjezd`. In order to add new
+printer and make it default please use web interface at:
+
+http://device-ip:631
+
+where `device-ip` is IP address of the device, and configure CUPS to fit your
+needs. Once asked for administrative password use `pi` as user and `raspberry`
+as password.
+
+Image Template Development
+==========================
+This section describes how the image template is being created and/or updated.
+Basically it is image of live device taken and converted to image:
+
+#. Install the latest un-customized (zero settings) image on device
+#. Boot the device and do requested modifications
+#. Power down the device, mount card on your computer as root
+#. Mount loopback devices on top of partitioned file of requested size (using
+    kpartx and offset=)
+#. Copy both `boot` and `root` partition contents to proper places in the image
+    file (NOTE: be sure file owner, group and rights are preserved)
+#. Unmout loopback devices
+#. Test newly created template
+
+NOTE: It is good practice to zero logs in /var/log (don't delete them) and
+empty e.g. APT package cache. But it is not required.
+
+
+.. vim:set ft=rst:
