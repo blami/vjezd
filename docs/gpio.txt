@@ -34,17 +34,17 @@ P1_25   DNC
 P1_26   SPI_CE1_N   GPIO7
 ======  ==========  =======
 
-For addressing port in `vjezd.conf` use number in BCM column (without GPIO
-prefix).
+For addressing port in `vjezd.conf` use number in Pin column (without P1_
+prefix). This is to avoid confusion between Raspberry Pi releases.
 
 Example:
 ^^^^^^^^
-Button is physically connected to pin 18 which is named GPIO5. Configuration
-for this button will be:
+Button is physically connected to pin 18 which is named GPIO5 and maps to BCM
+name GPIO24. Configuration for this button will be:
 
 .. code-block:: conf
 
-    button=gpio:25
+    button=gpio:18
 
 
 .. vim:set ft=rst:
