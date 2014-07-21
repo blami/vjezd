@@ -60,29 +60,25 @@ class PDFPrinter(BasePort):
         -------------
         Port accepts the following positional arguments:
         #. width - ticket width in milimeters
-        #. height - ticket height in milimeters
         #. /path/to/pdf - path to pdf file
 
         Full configuration line of PDF printer is:
-        ``printer=pdf:width,height,/path/to/pdf
+        ``printer=pdf:width,/path/to/pdf``
     """
 
     def __init__(self, *args):
         """ Initialize PDF printer.
         """
         self.width = 72
-        self.height = 80
         self.pdf_path = '/tmp/vjezd_ticket.pdf'
 
         if len(args) >= 1:
             self.width = int(args[0])
         if len(args) >= 2:
-            self.height = int(args[1])
-        if len(args) >= 3:
-            self.pdf_path = args[2]
+            self.pdf_path = args[1]
 
-        logger.info('PDF printer using: {} size={}x{}mm'.format(
-            self.pdf_path, self.width, self.height))
+        logger.info('PDF printer using: {} size={}mm'.format(
+            self.pdf_path, self.width))
 
 
     def test(self):
@@ -116,9 +112,11 @@ class PDFPrinter(BasePort):
         styles = getSampleStyleSheet()
 
         doc = SimpleDocTemplate(self.pdf_path,
-            pagesize=(self.width*mm, self.height*mm),
+            pagesize=letter,
             topMargin=5*mm,
-            rightMargin=2*mm, #(letter[0] - self.width*mm),
+            # NOTE We don't want to offend some printers by setting too small
+            # pagesize.
+            rightMargin=(letter[0] - self.width*mm - 2*mm),
             bottomMargin=5*mm,
             leftMargin=2*mm)
 
