@@ -36,7 +36,6 @@ import gettext
 import logging
 logger = logging.getLogger(__name__)
 
-from vjezd import threads
 
 # Python version check
 v = sys.version_info
@@ -139,6 +138,8 @@ def crit_exit(code=1, err=None, force_thread=False):
     db.session.rollback()
     db.session.remove()
 
+    from vjezd import threads
+
     # If possible log also relevant traceback
     tb = None
     if err and isinstance(err, Exception):
@@ -178,6 +179,7 @@ def exit(code=0):
 def signal_handler(signum, frame):
     """ Handle signals.
     """
+    from vjezd import threads
 
     # SIGINT (or ^C)
     if signum == signal.SIGINT:
@@ -222,11 +224,11 @@ def main(args):
             if not arg.lower() in ('scan', 'print', 'both', 'auto'):
                 print('error: mode must be one of scan, print, both, auto',
                     file=sys.stderr)
-            opt_mode=arg.lower()
+            opt_mode = arg.lower()
         elif opt in ('-i', '--id'):
-            opt_id=arg
+            opt_id = arg
         elif opt in ('-F', '--factory'):
-            opt_factory=True
+            opt_factory = True
         elif opt in ('-v', '--verbose'):
             # verbosity maps to logging log level numeric values (default: 40)
             if opt_loglevel is None:
@@ -268,6 +270,7 @@ def main(args):
     device.init(opt_id, opt_mode)
 
     # Run threads
+    from vjezd import threads
     # NOTE This method also monitors threads
     try:
         threads.run()

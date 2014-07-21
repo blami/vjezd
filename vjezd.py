@@ -30,9 +30,24 @@
 """
 
 import sys
+import os
+
+# If VJEZD_VIRTUALENV is set activate the virtualenv
+virtualenv = os.getenv('VJEZD_VIRTUALENV')
+if virtualenv:
+    print('running in virtualenv: {}'.format(virtualenv))
+    activate_file = '{}/bin/activate_this.py'.format(virtualenv)
+
+    if not os.access(activate_file, os.R_OK):
+        print('error: cannot activate {}'.format(virtualenv),
+            file=sys.stderr)
+        sys.exit(1)
+    else:
+        # Python 3.x has no execfile()
+        with open(activate_file, "r") as f:
+            exec(f.read(), dict(__file__=activate_file))
 
 import vjezd
-
 
 if __name__ == '__main__':
     vjezd.main(sys.argv[1:])
