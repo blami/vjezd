@@ -35,11 +35,11 @@ import os
 # If VJEZD_VIRTUALENV is set activate the virtualenv
 virtualenv = os.getenv('VJEZD_VIRTUALENV')
 if virtualenv:
-    print('running in virtualenv: {}'.format(virtualenv))
+    print('virtualenv: {}'.format(virtualenv))
     activate_file = '{}/bin/activate_this.py'.format(virtualenv)
 
     if not os.access(activate_file, os.R_OK):
-        print('error: cannot activate {}'.format(virtualenv),
+        print('error: {}'.format(virtualenv),
             file=sys.stderr)
         sys.exit(1)
     else:
