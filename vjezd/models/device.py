@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 from sqlalchemy import Column
 from sqlalchemy import Integer, String, DateTime, Enum
 
+from vjezd import db
 from vjezd.db import Base
 
 
