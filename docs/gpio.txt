@@ -1,0 +1,50 @@
+Raspberry Pi GPIO Pinout
+========================
+Following table contains mapping between physical pin numbers (first column)
+and BCM mapping (used in application and configuration file).
+
+======  ==========  =======
+Pin     Name        BCM
+======  ==========  =======
+P1_01   3V3
+P1_02   5V0
+P1_03   SDA0        GPIO0
+P1_04   DNC
+P1_05   SCL0        GPIO1
+P1_06   GND
+P1_07   GPIO7       GPIO4
+P1_08   TXD         GPIO14
+P1_09   DNC
+P1_10   RXD         GPIO15
+P1_11   GPIO0       GPIO17
+P1_12   GPIO1       GPIO18
+P1_13   GPIO2       GPIO21
+P1_14   DNC
+P1_15   GPIO3       GPIO22
+P1_16   GPIO4       GPIO23
+P1_17   DNC
+P1_18   GPIO5       GPIO24
+P1_19   SPI_MOSI    GPIO10
+P1_20   DNC
+P1_21   SPI_MISO    GPIO9
+P1_22   GPIO6       GPIO25
+P1_23   SPI_SCLK    GPIO11
+P1_24   SPI_CE0_N   GPIO8
+P1_25   DNC
+P1_26   SPI_CE1_N   GPIO7
+======  ==========  =======
+
+For addressing port in `vjezd.conf` use number in Pin column (without P1_
+prefix). This is to avoid confusion between Raspberry Pi releases.
+
+Example:
+^^^^^^^^
+Button is physically connected to pin 18 which is named GPIO5 and maps to BCM
+name GPIO24. Configuration for this button will be:
+
+.. code-block:: conf
+
+    button=gpio:18
+
+
+.. vim:set ft=rst:

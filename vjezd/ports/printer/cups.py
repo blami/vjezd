@@ -66,11 +66,11 @@ class CUPSPrinter(PDFPrinter):
         -------------
         Port accepts the following positional arguments:
         #. width - ticket width in milimeters
-        #. height - ticket height in milimeters
-        #. cups_printer_name - name of configured CUPS printer
+        #. cups_printer_name - name of configured CUPS printer, if unconfigured
+            will use default
 
         Full configuration line of CUPS printer is:
-        ``printer=cups:width,height,cups_printer_name
+        ``printer=cups:width,cups_printer_name``
     """
 
     #: Timeout in second to wait for print job success
@@ -89,12 +89,10 @@ class CUPSPrinter(PDFPrinter):
         if len(args) >= 1:
             self.width = int(args[0])
         if len(args) >= 2:
-            self.height = int(args[1])
-        if len(args) >= 3:
-            self.cups_printer_name = args[2]
+            self.cups_printer_name = args[1]
 
-        logger.info('CUPS printer using: {} size={}x{}mm'.format(
-            self.cups_printer_name or 'default', self.width, self.height))
+        logger.info('CUPS printer using: {} size={}mm'.format(
+            self.cups_printer_name or 'default', self.width))
 
 
     def test(self):
