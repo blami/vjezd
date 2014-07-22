@@ -181,6 +181,7 @@ class CUPSPrinter(PDFPrinter):
                     job_id))
             time.sleep(1)
             timeout = timeout + 1
+        logger.debug('CUPS print job #{} printed'.format(job_id))
 
 
 # Export port_class for port_factory()
