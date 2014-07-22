@@ -118,7 +118,7 @@ def init(_id=None, mode=None):
         db.session.commit()
         db.session.remove()
     except Exception as err:
-        logger.critical('Unable update device record {}!'.format(err))
+        logger.critical('Unable update device record: {}!'.format(err))
         crit_exit(3, err)
 
     logger.debug('Device {} initialized.'.format(id))
