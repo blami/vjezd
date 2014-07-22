@@ -25,29 +25,29 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" GPIO Button
-    ===========
+""" GPIO Relay
+    ==========
 """
 
+import time
 import logging
 logger = logging.getLogger(__name__)
 
 import RPi.GPIO as GPIO
 
 from vjezd.ports import gpio_registry
-from vjezd.ports.base import BasePort
+from vjezd.ports.relay.base import BaseRelay
 
 
-class GPIOButtonInvalidPinError(Exception):
+class GPIORelayInvalidPinError(Exception):
     """ Exception raised when an invalid pin number is configured.
     """
 
 
-class GPIOButton(BasePort):
-    """ Raspberry Pi GPIO button port.
+class GPIORelay(BaseRelay):
+    """ Raspberry Pi GPIO relay port.
 
-        Raspberry Pi GPIO button reads button presses on a GPIO (general
-        purpose input/output) pin.
+        Raspberry Pi GPIO pin driven 5V relay.
 
         Configuration
         -------------
@@ -55,14 +55,11 @@ class GPIOButton(BasePort):
         #. pin - GPIO physical pin number (without P1_ prefix)
 
         Full configuration line of evdev button is:
-        ``button=gpio:pin``
+        ``relay=gpio:pin``
     """
 
-
     def __init__(self, *args):
-        """ Initialize port configuration.
-        """
-        self.pin = 22
+        self.pin = 18
         self._is_open = False
 
         if len(args) >= 1:
@@ -70,10 +67,11 @@ class GPIOButton(BasePort):
 
         if self.pin not in (3, 5, 7, 8, 10, 11, 12, 13, 15, 16, 18, 19, 21, 22,
             23, 24, 26):
-            raise GPIOButtonInvalidPinError('Invalid GPIO pin {}'.format(
+            raise GPIORelayInvalidPinError('Invalid GPIO pin {}'.format(
                 self.pin))
 
-        logger.info('GPIO button using pin: {}'.format(self.pin))
+        logger.info('GPIO relay using pin: {}'.format(self.pin))
+
 
 
     def test(self):
@@ -88,8 +86,7 @@ class GPIOButton(BasePort):
         logger.info('Opening GPIO {}'.format(self.pin))
         gpio_registry.register(self)
 
-        GPIO.setup(self.pin, GPIO.IN)
-        GPIO.add_event_detect(self.pin, GPIO.RISING, bouncetime=1000)
+        GPIO.setup(self.pin, GPIO.OUT)
 
         self._is_open = True
 
@@ -99,7 +96,6 @@ class GPIOButton(BasePort):
         """
         logger.info('Closing GPIO {}'.format(self.pin))
         if self._is_open:
-            GPIO.remove_event_detect(self.pin)
             gpio_registry.unregister(self)
             self._is_open = False
 
@@ -110,27 +106,25 @@ class GPIOButton(BasePort):
         return self._is_open
 
 
-    def read(self, callback=None):
-        """ Read GPIO.
+    def activate(self, mode):
+        """ Activate relay.
 
-            If button event is triggered a function assigned to callback
-            argument is run.
-        """
-        if GPIO.event_detected(self.pin):
-            logger.debug('Trigger: RISING EDGE')
-            # Execute callback function
-            if callback and hasattr(callback, '__call__'):
-                callback()
-
-
-    def flush(self):
-        """ Flush event device.
+            :param data string:     activation mode (print or scan)
         """
 
-        logger.debug('Flushing port')
-        while GPIO.event_detected(self.pin):
-            pass
+        # Wait for configured delay
+        delay = self.get_delay(mode)
+        logger.info('Waiting configured delay {} seconds'.format(delay))
+        time.sleep(delay)
+
+        # Activate relay for configured period
+        period = self.get_period(mode)
+        logger.info('Activating relay in {} mode for {}s'.format(mode, period))
+
+        GPIO.output(self.pin, GPIO.HIGH)
+        time.sleep(period)
+        GPIO.output(self.pin, GPIO.LOW)
 
 
 # Export port_class for port_factory()
-port_class = GPIOButton
+port_class = GPIORelay

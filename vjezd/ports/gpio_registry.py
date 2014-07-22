@@ -94,6 +94,6 @@ def unregister(port):
         else:
             _registry.remove(port)
 
-        # If port registry is empty do a cleanup
-        logger.debug('No GPIO ports. Cleaning up')
-        GPIO.cleanup()
+        if not _registry:
+            logger.debug('No GPIO ports. Cleaning up')
+            GPIO.cleanup()

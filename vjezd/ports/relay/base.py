@@ -29,11 +29,15 @@
     ===============
 """
 
+import threading
 import logging
 logger = logging.getLogger(__name__)
 
 from vjezd.ports.base import BasePort
 from vjezd.models import Config
+
+
+_lock = threading.Lock()
 
 
 class BaseRelay(BasePort):
@@ -63,11 +67,10 @@ class BaseRelay(BasePort):
         return Config.get_int('relay_{}_delay'.format(mode), fallback[mode])
 
 
-    def get_period(self):
+    def get_period(self, data=None):
         """ Get period between relay activation and deactivation.
         """
-        # FIXME Not in specification
-        pass
+        return 5
 
 
     def write(self, data):
@@ -79,7 +82,12 @@ class BaseRelay(BasePort):
         if data not in ('print', 'scan'):
             raise TypeError('Invalid activation mode {}'.format(data))
 
-        self.activate(data)
+        # As relay might be (in case of mode=both) used by print and scan
+        # thread it is important to lock body of activate method and make
+        # second thread wait for relay.
+        logger.debug('Waiting for relay lock')
+        with _lock:
+            self.activate(data)
 
 
     def activate(self, mode):
