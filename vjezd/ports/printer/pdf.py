@@ -84,7 +84,8 @@ class PDFPrinter(BasePort):
     def test(self):
         """ Test whether is possible to write PDF file to spool.
         """
-        if not os.access(self.pdf_path, os.W_OK):
+        if not os.access(os.path.dirname(self.pdf_path), os.W_OK) or
+            not os.access(os.path(self.pdf_path, os.W_OK):
             raise PDFPrinterTestError('Cannot write PDF to {}'.format(
                 self.pdf_path))
 
