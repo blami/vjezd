@@ -23,7 +23,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SPHINXOPTS		= -d build/pickle
+SPHINXOPTS		= -d build/
 SPHINXBUILD		= sphinx-build
 
 # Add system-wide PYTHONPATH so Sphinx can be run in virtualenv even if it's
@@ -31,7 +31,7 @@ SPHINXBUILD		= sphinx-build
 # NOTE Debian/Raspbian Python3 specific environment variable!
 export PYTHONPATH = /usr/lib/python3/dist-packages
 
-.PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest gettext
+.PHONY: clean html man
 
 all: html
 
