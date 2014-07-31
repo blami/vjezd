@@ -34,6 +34,7 @@ import os
 import getopt
 import socket
 import select
+import signal
 import logging
 logger = logging.getLogger(__name__)
 
@@ -133,6 +134,40 @@ def finalize():
         server.close()
 
 
+def gpio_command(pin, direction, value=None):
+    """ Process GPIO command.
+    """
+    # TODO check valid pins
+
+    if direction == 'OUT':
+        # Setup GPIO direction to out
+        if has_gpio:
+           GPIO.setup(pin, GPIO.OUT)
+        logger.debug('GPIO pin {} set to direction OUT'.format(pin))
+
+        # Parse value
+        if value == 'LOW':
+            if has_gpio:
+                gpio_value = GPIO.LOW
+            else:
+                gpio_value = 0
+        elif value == 'HIGH':
+            if has_gpio:
+                gpio_value = GPIO.HIGH
+            else:
+                gpio_value = 1
+        else:
+            logger.error('Value {} not supported!'.format(value))
+            return
+
+        # Write GPIO
+        logger.info('Write GPIO pin={} value={}'.format(pin, value))
+        if has_gpio:
+            GPIO.output(pin, gpio_value)
+    else:
+        logger.error('Direction {} not supported!'.format(direction))
+
+
 # Application entry point
 if __name__ == '__main__':
 
@@ -167,7 +202,6 @@ if __name__ == '__main__':
             version()
             sys.exit()
 
-
     # Setup logging
     log_format='%(asctime)s %(levelname)s [%(name)s ' \
         '%(funcName)s():%(lineno)d] %(message)s'
@@ -175,6 +209,8 @@ if __name__ == '__main__':
     logging.basicConfig(format=log_format, datefmt=log_datefmt,
         level=opt_loglevel)
 
+    # Setup signal handler
+    # TODO
 
     # Configure GPIO pin numbering
     if has_gpio:
@@ -182,7 +218,8 @@ if __name__ == '__main__':
 
     # Configure TCP/IP server socket
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    #server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.setblocking(0)
     server.bind((opt_ip, opt_port))
     logger.info('Listening on {}:{}...'.format(opt_ip, opt_port))
     server.listen(0)
@@ -193,7 +230,7 @@ if __name__ == '__main__':
     while not exiting:
         r, w, x = select.select(inputs, outputs, [], 1)
 
-        for s in inputs:
+        for s in r:
             # Handle incomming connections
             if s == server:
                 client, ip = server.accept()
@@ -203,9 +240,16 @@ if __name__ == '__main__':
 
             # Handle client requests
             else:
-                data = s.recv(128)
+                data = s.recv(1024).decode('utf-8')
                 if data:
-                    print(data)
+                    msg = data.rstrip('\n').split(',')
+                    if len(msg) == 3 \
+                        and msg[1] in ('OUT') \
+                        and msg[2] in ('HIGH', 'LOW'):
+                        # Got a valid message, process GPIO
+                        gpio_command(int(msg[0]), msg[1], msg[2])
+                    else:
+                        logger.error('Invalid message {}'.format(data))
                 else:
                     # Client hung up
                     logger.info('Client disconnect {}'.format(
@@ -213,3 +257,4 @@ if __name__ == '__main__':
                     inputs.remove(s)
                     outputs.remove(s)
                     s.close()
+
