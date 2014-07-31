@@ -29,7 +29,7 @@ Description=Vjezd
 After=network.target
 
 [Service]
-Environment=VIRTUALENV_DIR=/opt/vjezd/venv-armhf-linux
+Environment=VENV_PATH=/opt/vjezd/venv-armhf-linux
 ExecStart=/opt/vjezd/vjezd.py
 Restart=always
 
