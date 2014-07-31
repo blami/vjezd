@@ -160,7 +160,6 @@ class CUPSPrinter(PDFPrinter):
         # Generate PDF
         PDFPrinter.write(self, data)
 
-        print(self.cups_printer)
         # Print PDF and block until ticket gets printed (or max timeout is
         # reached)
         timeout = 0
