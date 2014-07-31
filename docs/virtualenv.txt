@@ -1,0 +1,17 @@
+Virtual Environment
+*******************
+Recommended way of development and also deployment of application is use of
+Python's `virtualenv` virtual environment into which all required packages are
+installed.
+
+Run script `vjezd.py` detects environment variable `VIRTUALENV_PATH` which, if
+assigned 
+
+.. code-block:: bash
+
+    
+    pip install -r requirements.txt --allow-all-external
+
+
+
+.. vim:set ft=rst:

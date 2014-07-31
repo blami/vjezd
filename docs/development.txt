@@ -1,0 +1,15 @@
+Development
+***********
+This section describes the development-related topics and should be used as a
+reference guide for extending or fixing bugs in application.
+
+Virtual Environment Setup
+-------------------------
+.. code-block:: bash
+
+    
+    pip install -r requirements.txt --allow-all-external
+
+
+
+.. vim:set ft=rst:
