@@ -32,10 +32,17 @@
 import sys
 import os
 
-# If VJEZD_VIRTUALENV is set activate the virtualenv
-virtualenv = os.getenv('VJEZD_VIRTUALENV')
+
+# Python version check
+v = sys.version_info
+if v[0] < 3 or (v[0] == 3 and v[:2] < (3,3)):
+    raise ImportError('Application requires Python 3.3 or above')
+del v
+
+# If VENV_PATH is set and points to virtualenv directory, activate it
+virtualenv = os.getenv('VENV_PATH')
 if virtualenv:
-    print('virtualenv: {}'.format(virtualenv))
+    print('info: running in virtualenv {}'.format(virtualenv))
     activate_file = '{}/bin/activate_this.py'.format(virtualenv)
 
     if not os.access(activate_file, os.R_OK):
