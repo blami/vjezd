@@ -29,7 +29,7 @@ Description=TCPGPIO
 After=network.target
 
 [Service]
-Environment=VENV_PATH=/opt/vjezd/venv-armhf-linux
+Environment=VENV_PATH=/opt/vjezd/venv-linux-armv6l
 ExecStart=/opt/vjezd/tcpgpio.py
 Restart=always
 
