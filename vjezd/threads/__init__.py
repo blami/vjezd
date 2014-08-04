@@ -46,10 +46,10 @@ NOT_EXITING = 0
 EXITING = 1
 CRIT_EXITING = 2
 
-# Module internal variables
-exiting_lock = threading.Lock()
 exiting = NOT_EXITING
 threads = []
+# Exiting state lock
+_lock = threading.Lock()
 
 
 def run():
@@ -99,8 +99,8 @@ def set_exiting(state=EXITING):
     """
     global exiting
 
-    logger.debug('Waiting for exiting lock')
-    with exiting_lock:
+    logger.debug('Waiting for exiting state lock')
+    with _lock:
         if exiting != state:
             logger.debug('Setting exiting flag to {}'.format(state))
             exiting = state
