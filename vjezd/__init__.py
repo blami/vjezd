@@ -37,12 +37,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# Python version check
-v = sys.version_info
-if v[0] < 3 or (v[0] == 3 and v[:2] < (3,3)):
-    raise ImportError('Application requires Python 3.3 or above')
-del v
-
 # Release information
 # FIXME perhaps load from generated file (e.g. from git tags)
 __author__ = 'Ondrej Balaz'
@@ -190,6 +184,7 @@ def signal_handler(signum, frame):
 def main(args):
     """ Application entry point.
     """
+    from vjezd import modes
 
     opt_logfile = None
     opt_loglevel = None
@@ -214,16 +209,15 @@ def main(args):
         print('error: {}'.format(err), file=sys.stderr)
         help()
         sys.exit(1)
-
     for opt, arg in opts:
         if opt in ('-l', '--log'):
             opt_logfile = arg
         elif opt in ('-c', '--conf'):
             opt_conf = arg
         elif opt in ('-m', '--mode'):
-            if not arg.lower() in ('scan', 'print', 'both', 'auto'):
-                print('error: mode must be one of scan, print, both, auto',
-                    file=sys.stderr)
+            if not arg.lower() in modes.modes:
+                print('error: mode must be one of: {}'.format(
+                    ', '.join(modes.modes)), file=sys.stderr)
             opt_mode = arg.lower()
         elif opt in ('-i', '--id'):
             opt_id = arg
@@ -262,8 +256,8 @@ def main(args):
     from vjezd import ports
     from vjezd import device
 
-    # Initialize ports as we need them to decide which mode device operates in
-    # in case it is being set to auto.
+    # Initialize ports as we need them to decide which mode device operates
+    # in in case it is being set to auto.
     ports.init()
 
     # Initialize device
@@ -275,5 +269,5 @@ def main(args):
     try:
         threads.run()
     except Exception as err:
-        logger.critical('Cannot start application threads: {}'.format(err))
+        logger.critical('Error while running application: {}'.format(err))
         crit_exit(10, err)
