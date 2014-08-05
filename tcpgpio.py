@@ -433,7 +433,7 @@ if __name__ == '__main__':
                                     del _pin_locks[msg.pin]
                                     locked = False
 
-                            print(_pin_locks)
+                            logger.debug('Locks: {}'.format(_pin_locks))
 
                             # Send reply (if not locked and if required)
                             if not locked:
