@@ -71,7 +71,7 @@ class TCPGPIOMessage(object):
         Message has a following format (as sent over network):
 
         .. code-block:: python
-            type:pin:value
+            devid:type:pin:value
 
         Notes:
         * ``REPLY`` message to ``WRITE`` and ``PING`` requests always uses
@@ -79,6 +79,10 @@ class TCPGPIOMessage(object):
         * ``REPLY`` message to ``READ`` uses read state as a value, except in
           case the read operation was unsuccessful. In that case ``NONE`` is
           used and client should handle it.
+        * ``XWRITE`` message means an exclusive write which will lock the pin
+          until next write operation from same device on same pin and opposite
+          value is done (which literally unlocks pin). Until pin is locked no
+          replies are sent nor values written to other devices.
 
         NOTE: for GPIO pin numbering we always use board numbering, not BCM
         mapping.
@@ -86,9 +90,8 @@ class TCPGPIOMessage(object):
 
     # Message type constants
     WRITE = 0
-    READ = 1                        # Not implemented
+    XWRITE = 4
     REPLY = 2
-    PING = 3                        # Not implemented
 
     # Message pin value constants
     LOW = 0
@@ -103,32 +106,35 @@ class TCPGPIOMessage(object):
             in the following ways:
             .. code-block:: python
 
-                msg = TCPGPIOMessage(type, pin, value) # on sending side
+                msg = TCPGPIOMessage(devid, type, pin, value) # on sending side
                 msg = TCPGPIOMessage(bytes) # on receiving side
 
             NOTE: parameters are positional.
 
             :param msg string:      message serialized to string
+            :param devid string:    device identifier
             :param type integer:    message type
             :param pin integer:     pin number
             :param value integer:   pin value, defaults to NONE
         """
 
-        if len(args) >= 2:
+        if len(args) >= 3:
             # Initialize new message
-            self.type = args[0]
-            self.pin = args[1]
-            self.value = args[2] if len(args) == 3 else self.NONE
+            self.devid = args[0]
+            self.type = args[1]
+            self.pin = args[2]
+            self.value = args[3] if len(args) == 4 else self.NONE
 
         elif len(args) == 1:
             # Deserialize string back to message
             parts = args[0].split(':')
-            if len(parts) != 3:
+            if len(parts) != 4:
                 raise TCPGPIOInvalidMessageError('Invalid message')
 
-            self.type = int(parts[0])
-            self.pin = int(parts[1])
-            self.value = int(parts[2])
+            self.devid = parts[0]
+            self.type = int(parts[1])
+            self.pin = int(parts[2])
+            self.value = int(parts[3])
 
         else:
             # Invalid message
@@ -138,8 +144,8 @@ class TCPGPIOMessage(object):
     def __repr__(self):
         """ Represent message as string as communicated over network.
         """
-        return '{}:{}:{}'.format(
-            self._type, self._pin, self._value)
+        return '{}:{}:{}:{}'.format(
+            self.devid, self._type, self._pin, self._value)
 
 
     @property
@@ -153,7 +159,7 @@ class TCPGPIOMessage(object):
     def type(self, v):
         """ Set message type.
         """
-        if v not in (self.WRITE, self.REPLY):
+        if v not in (self.WRITE, self.XWRITE, self.REPLY):
             raise ValueError('Invalid message type')
         self._type = v
 
@@ -203,6 +209,11 @@ APP_VER = __version__
 _server = None
 _exiting = False
 
+# Dictionary where devid is key and value is list of tuples in form (pin,
+# state)
+_pin_locks = {}
+
+
 def help():
     """ Show short help message.
     """
@@ -247,38 +258,30 @@ def finalize():
         _server.close()
 
 
-def process_message(msg):
+def gpio_write(pin, value):
     """ Process GPIO message.
 
-        :param msg TCPGPIOMessage:  message to process
+        :param pin integer:         GPIO pin number
+        :param value integer:       GPIO pin value to be written (use
+                                    TCPGPIOMessage constants except NONE)
     """
-    if direction == 'OUT':
-        # Setup GPIO direction to out
-        if has_gpio:
-           GPIO.setup(pin, GPIO.OUT)
-        logger.debug('GPIO pin {} set to direction OUT'.format(pin))
+    if pin not in (3, 5, 7, 8, 10, 11, 12, 13, 15, 16, 18, 19, 21, 22,
+        23, 24, 26):
+        logger.error('Invalid GPIO pin {}!'.format(pin))
+        return
 
-        # Parse value
-        if value == 'LOW':
-            if has_gpio:
-                gpio_value = GPIO.LOW
-            else:
-                gpio_value = 0
-        elif value == 'HIGH':
-            if has_gpio:
-                gpio_value = GPIO.HIGH
-            else:
-                gpio_value = 1
-        else:
-            logger.error('Value {} not supported!'.format(value))
-            return
+    if value not in (TCPGPIOMessage.LOW, TCPGPIOMessage.HIGH):
+        logger.error('Invalid GPIO pin value {}!'.format(value))
+        return
 
-        # Write GPIO
-        logger.info('Write GPIO pin={} value={}'.format(pin, value))
-        if has_gpio:
-            GPIO.output(pin, gpio_value)
-    else:
-        logger.error('Direction {} not supported!'.format(direction))
+    if has_gpio:
+        gpio_value = GPIO.LOW
+        if value == TCPGPIOMessage.HIGH:
+            gpio_value = GPIO.HIGH
+        # Set level on given GPIO pin
+        gpio.output(pin, gpio_value)
+
+    logger.info('GPIO pin {} set to value {}'.format(pin, value))
 
 
 # Application entry point
@@ -360,9 +363,10 @@ if __name__ == '__main__':
     # Configure TCP/IP server socket
     logger.debug('Opening socket')
     _server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     _server.setblocking(0)
     _server.bind((opt_ip, opt_port))
+
+    # Listen for an incoming connections
     logger.info('Listening on {}:{}...'.format(opt_ip, opt_port))
     _server.listen(0)
 
@@ -389,7 +393,63 @@ if __name__ == '__main__':
                     if d:
                         try:
                             msg = TCPGPIOMessage(d)
-                            print(msg)
+                            locked = False
+
+                            # Handle message
+                            # Write
+                            if msg.type == TCPGPIOMessage.WRITE:
+                                gpio_write(msg.pin, msg.value)
+
+                            # Exclusive write
+                            elif msg.type == TCPGPIOMessage.XWRITE:
+                                # Check whether locked or not
+                                lock = None
+                                for p in _pin_locks.get(msg.devid) or ():
+                                    if p[0] == msg.pin:
+                                        locked = True
+                                        lock = p
+
+                                if not locked:
+                                    logger.debug('{} locks pin {}'.format(
+                                        msg.devid, msg.pin))
+                                    p = _pin_locks.get(msg.devid)
+                                    if not p:
+                                        p = _pin_locks[msg.devid] = []
+
+                                    lock = (msg.pin, msg.value)
+                                    p.append(lock)
+                                    # Write to locked pin
+                                    gpio_write(msg.pin, msg.value)
+                                    # DON'T SET locked=True HERE AS WE WANT TO
+                                    # SEND REPLY!
+
+                                elif locked and lock:
+                                    # When locked and msg.value is oposite to
+                                    # lock value then unlock
+                                    if (msg.value == TCPGPIOMessage.LOW and \
+                                        lock[1] == TCPGPIOMessage.HIGH) or ( \
+                                        msg.value == TCPGPIOMessage.HIGH and \
+                                        lock[1] == TCPGPIOMessage.LOW):
+
+                                        logger.debug('{} unlocks pin {}'.format(
+                                            msg.devid, msg.pin))
+                                        # Write to unlocked pin
+                                        gpio_write(msg.pin, msg.value)
+
+                                        _pin_locks.get(msg.devid).remove(lock)
+                                        locked = False
+
+                            print(_pin_locks)
+
+                            # Send reply (if not locked and if required)
+                            if not locked:
+                                logger.debug('Sending REPLY')
+                                # reply devid is same as sender, pin is same
+                                # too (not used anyway), value is NONE
+                                reply = TCPGPIOMessage(msg.devid,
+                                    TCPGPIOMessage.REPLY, msg.pin,
+                                    TCPGPIOMessage.NONE)
+                                s.send(repr(reply).encode('utf-8'))
 
                         except TCPGPIOInvalidMessageError as err:
                             logger.error('Invalid message {}'.format(d))
