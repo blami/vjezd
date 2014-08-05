@@ -35,6 +35,7 @@
 """
 
 import socket
+import re
 import logging
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,10 @@ def init(_id=None, mode=None):
         id = conffile.get('device', 'id')
     if not id:
         logger.critical('Device identifier must be set!')
+        crit_exit(3)
+
+    if not re.match('^[0-9A-Za-z]{1,8}$', id):
+        logger.critical('Device identifier must be up to 8 a-zA-Z0-9 chars!')
         crit_exit(3)
 
     # Determine device mode. In case of misspeled or wrong
