@@ -142,6 +142,7 @@ class TCPGPIORelay(BaseRelay):
     def _send_message(self, pin, state):
         """ Send TCPGPIO message to server and process reply or timeout.
         """
+        from vjezd.device import id as device_id
 
         # Create message
         value = TCPGPIOMessage.NONE
@@ -149,7 +150,7 @@ class TCPGPIORelay(BaseRelay):
             value = TCPGPIOMessage.HIGH
         elif state == 0:
             value = TCPGPIOMessage.LOW
-        msg = TCPGPIOMessage(TCPGPIOMessage.WRITE, pin, value)
+        msg = TCPGPIOMessage(device_id, TCPGPIOMessage.XWRITE, pin, value)
 
         client = None
         try:
@@ -167,10 +168,12 @@ class TCPGPIORelay(BaseRelay):
 
             # Wait for confirmation reply, if not received a socket timeout
             # exception
-            data = client.recv(BUFFER_SIZE)
-            reply = TCPGPIOMessage(data.decode('utf-8'))
-
-            logger.debug('Received reply: {}'.format(reply))
+            d = client.recv(BUFFER_SIZE)
+            if d:
+                reply = TCPGPIOMessage(d.decode('utf-8'))
+                logger.debug('Received reply: {}'.format(reply))
+            else:
+                logger.error('Server hung-up!')
 
             client.close()
             logger.debug('Disconnected')
