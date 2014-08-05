@@ -40,7 +40,7 @@ if v[0] < 3 or (v[0] == 3 and v[:2] < (3,3)):
 del v
 
 # If VENV_PATH is set and points to virtualenv directory, activate it
-virtualenv = os.getenv('VENV_PATH')
+virtualenv = os.getenv('VIRTUALENV_PATH')
 if virtualenv:
     print('info: running in virtualenv {}'.format(virtualenv))
     activate_file = '{}/bin/activate_this.py'.format(virtualenv)
