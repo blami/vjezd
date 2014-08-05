@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 from vjezd import db
 from vjezd.models import Ticket
 from vjezd.threads.base import BaseThread
-from vjezd.ports import port
+from vjezd.ports import port, PortWriteError
 
 
 class ScanThread(BaseThread):
@@ -80,7 +80,13 @@ class ScanThread(BaseThread):
         ticket.use()
 
         # Activate relay
-        port('relay').write('scan')
+        try:
+            port('relay').write('scan')
+        except PortWriteError as err:
+            # In case port write raised an exception rollback the session
+            logger.error('Cannot write port {}!'.format(err))
+            db.session.remove()
+
 
         # Commit DB transaction once ticket is succesfully used
         db.session.commit()

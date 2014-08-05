@@ -40,17 +40,12 @@ import cups
 from vjezd import APP_NAME
 from vjezd import threads
 from vjezd.models import Ticket
+from vjezd.ports import PortWriteError
 from vjezd.ports.printer.pdf import PDFPrinter
 
 
 class CUPSPrinterTestError(Exception):
     """ Exception raised when port test fails.
-    """
-    pass
-
-
-class CUPSPrinterJobError(Exception):
-    """ Exception raised when unable to finish print job.
     """
     pass
 
@@ -172,9 +167,7 @@ class CUPSPrinter(PDFPrinter):
         while self.cups_conn.getJobs().get(job_id, None) is not None:
             # Wait for given amount of time but don't block over exiting
             if timeout >= self.PRINT_TIMEOUT or threads.exiting:
-                if threads.exiting:
-                    logger.warning('Exiting before valid ticket printed')
-                raise CUPSPrinterJobError('CUPS print job #{} stalled!'.format(
+                raise PortWriteError('CUPS print job #{} stalled!'.format(
                     job_id))
             time.sleep(1)
             timeout = timeout + 1

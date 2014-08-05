@@ -26,7 +26,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" TCPGPIO server.
+""" TCPGPIO protocol and server.
+
+    TCPGPIO protocol is simple insecure TCP/IP protocol for remotely controling
+    GPIO pins of Raspberry Pi and also server for this protocol.
 """
 
 import sys
@@ -35,6 +38,7 @@ import getopt
 import socket
 import select
 import signal
+import time
 import logging
 logger = logging.getLogger(__name__)
 
@@ -45,33 +49,149 @@ if v[0] < 3 or (v[0] == 3 and v[:2] < (3,3)):
     raise ImportError('Application requires Python 3.3 or above')
 del v
 
-# If VENV_PATH is set and points to virtualenv directory, activate it
-virtualenv = os.getenv('VIRTUALENV_PATH')
-if virtualenv:
-    print('info: running in virtualenv {}'.format(virtualenv))
-    activate_file = '{}/bin/activate_this.py'.format(virtualenv)
-
-    if not os.access(activate_file, os.R_OK):
-        print('error: {}'.format(virtualenv),
-            file=sys.stderr)
-        sys.exit(1)
-    else:
-        # Python 3.x has no execfile()
-        with open(activate_file, "r") as f:
-            exec(f.read(), dict(__file__=activate_file))
-
-
-has_gpio = True
-try:
-    import RPi.GPIO as GPIO
-except RuntimeError:
-    has_gpio = False
-
 # Release information
 # FIXME perhaps load from generated file (e.g. from git tags)
 __author__ = 'Ondrej Balaz'
 __license__ = 'BSD'
 __version__ = '1.0'
+
+
+# Protocol
+
+class TCPGPIOInvalidMessageError(Exception):
+    """ Exception raised when serialized message is invalid.
+    """
+    pass
+
+
+class TCPGPIOMessage(object):
+    """ TCPGPIOMessage implements simple insecure protocol for controling GPIO
+        pins of Raspberry Pi remotely.
+
+        Message has a following format (as sent over network):
+
+        .. code-block:: python
+            type:pin:value
+
+        Notes:
+        * ``REPLY`` message to ``WRITE`` and ``PING`` requests always uses
+          ``NONE`` as value.
+        * ``REPLY`` message to ``READ`` uses read state as a value, except in
+          case the read operation was unsuccessful. In that case ``NONE`` is
+          used and client should handle it.
+
+        NOTE: for GPIO pin numbering we always use board numbering, not BCM
+        mapping.
+    """
+
+    # Message type constants
+    WRITE = 0
+    READ = 1                        # Not implemented
+    REPLY = 2
+    PING = 3                        # Not implemented
+
+    # Message pin value constants
+    LOW = 0
+    HIGH = 1
+    NONE = 2
+
+
+    def __init__(self, *args):
+        """ Initialize the message.
+
+            Depending on use case (and protocol side) object can be initialized
+            in the following ways:
+            .. code-block:: python
+
+                msg = TCPGPIOMessage(type, pin, value) # on sending side
+                msg = TCPGPIOMessage(bytes) # on receiving side
+
+            NOTE: parameters are positional.
+
+            :param msg string:      message serialized to string
+            :param type integer:    message type
+            :param pin integer:     pin number
+            :param value integer:   pin value, defaults to NONE
+        """
+
+        if len(args) >= 2:
+            # Initialize new message
+            self.type = args[0]
+            self.pin = args[1]
+            self.value = args[2] if len(args) == 3 else self.NONE
+
+        elif len(args) == 1:
+            # Deserialize string back to message
+            parts = args[0].split(':')
+            if len(parts) != 3:
+                raise TCPGPIOInvalidMessageError('Invalid message')
+
+            self.type = int(parts[0])
+            self.pin = int(parts[1])
+            self.value = int(parts[2])
+
+        else:
+            # Invalid message
+            raise TypeError('Invalid set of arguments')
+
+
+    def __repr__(self):
+        """ Represent message as string as communicated over network.
+        """
+        return '{}:{}:{}'.format(
+            self._type, self._pin, self._value)
+
+
+    @property
+    def type(self):
+        """ Get message type.
+        """
+        return self._type
+
+
+    @type.setter
+    def type(self, v):
+        """ Set message type.
+        """
+        if v not in (self.WRITE, self.REPLY):
+            raise ValueError('Invalid message type')
+        self._type = v
+
+
+    @property
+    def pin(self):
+        return self._pin
+
+
+    @pin.setter
+    def pin(self, v):
+        """ Set pin number.
+        """
+        if v not in (3, 5, 7, 8, 10, 11, 12, 13, 15, 16, 18, 19, 21, 22,
+            23, 24, 26):
+            raise ValueError('Invalid GPIO pin number')
+        self._pin = v
+
+
+    @property
+    def value(self):
+        """ Get pin value.
+        """
+        if self._value == self.NONE:
+            return None
+        return self._value
+
+
+    @value.setter
+    def value(self, v):
+        """ Set message value.
+        """
+        if v not in (self.LOW, self.HIGH, self.NONE):
+            raise ValueError('Invalid GPIO pin value')
+        self._value = v
+
+
+# Server
 
 # Constants
 # Application name
@@ -80,15 +200,8 @@ APP_NAME = os.path.basename(os.path.splitext(sys.argv[0])[0])
 APP_VER = __version__
 
 # Globals
-server = None
-exiting = False
-
-
-class TCPGPIOMessage(object):
-    """
-    """
-    pass
-
+_server = None
+_exiting = False
 
 def help():
     """ Show short help message.
@@ -129,16 +242,16 @@ def finalize():
     """
     if has_gpio:
         GPIO.cleanup()
-    if server:
+    if _server:
         logger.debug('Closing socket')
-        server.close()
+        _server.close()
 
 
-def gpio_command(pin, direction, value=None):
-    """ Process GPIO command.
+def process_message(msg):
+    """ Process GPIO message.
+
+        :param msg TCPGPIOMessage:  message to process
     """
-    # TODO check valid pins
-
     if direction == 'OUT':
         # Setup GPIO direction to out
         if has_gpio:
@@ -170,6 +283,21 @@ def gpio_command(pin, direction, value=None):
 
 # Application entry point
 if __name__ == '__main__':
+
+    # If VENV_PATH is set and points to virtualenv directory, activate it
+    virtualenv = os.getenv('VIRTUALENV_PATH')
+    if virtualenv:
+        print('info: running in virtualenv {}'.format(virtualenv))
+        activate_file = '{}/bin/activate_this.py'.format(virtualenv)
+
+        if not os.access(activate_file, os.R_OK):
+            print('error: {}'.format(virtualenv),
+                file=sys.stderr)
+            sys.exit(1)
+        else:
+            # Python 3.x has no execfile()
+            with open(activate_file, "r") as f:
+                exec(f.read(), dict(__file__=activate_file))
 
     opt_ip = '0.0.0.0'
     opt_port = 7777
@@ -209,6 +337,19 @@ if __name__ == '__main__':
     logging.basicConfig(format=log_format, datefmt=log_datefmt,
         level=opt_loglevel)
 
+    # Improve debugging by allowing application to just emulate GPIO on non
+    # Raspberry Pi systems.
+    has_gpio = True
+    try:
+        import RPi.GPIO as GPIO
+    except RuntimeError as err:
+        logger.error('{}'.format(err))
+        if opt_loglevel == logging.DEBUG:
+            has_gpio = False
+        else:
+            print('error: to run without GPIO use --debug argument')
+            sys.exit(1)
+
     # Setup signal handler
     # TODO
 
@@ -217,44 +358,53 @@ if __name__ == '__main__':
         GPIO.setup(GPIO.BOARD)
 
     # Configure TCP/IP server socket
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    logger.debug('Opening socket')
+    _server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     #server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.setblocking(0)
-    server.bind((opt_ip, opt_port))
+    _server.setblocking(0)
+    _server.bind((opt_ip, opt_port))
     logger.info('Listening on {}:{}...'.format(opt_ip, opt_port))
-    server.listen(0)
+    _server.listen(0)
 
-    inputs = [server]
+    inputs = [_server]
     outputs = []
 
-    while not exiting:
-        r, w, x = select.select(inputs, outputs, [], 1)
+    while not _exiting:
+        try:
+            r, w, x = select.select(inputs, outputs, [], 1)
 
-        for s in r:
-            # Handle incomming connections
-            if s == server:
-                client, ip = server.accept()
-                logger.info('Client connection {}'.format(ip))
-                inputs.append(client)
-                outputs.append(client)
+            for s in r:
+                # Handle incomming connections
+                if s == _server:
+                    client, ip = _server.accept()
+                    logger.info('Client connection {}'.format(ip))
+                    inputs.append(client)
+                    outputs.append(client)
 
-            # Handle client requests
-            else:
-                data = s.recv(1024).decode('utf-8')
-                if data:
-                    msg = data.rstrip('\n').split(',')
-                    if len(msg) == 3 \
-                        and msg[1] in ('OUT') \
-                        and msg[2] in ('HIGH', 'LOW'):
-                        # Got a valid message, process GPIO
-                        gpio_command(int(msg[0]), msg[1], msg[2])
-                    else:
-                        logger.error('Invalid message {}'.format(data))
+                # Handle client requests
                 else:
-                    # Client hung up
-                    logger.info('Client disconnect {}'.format(
-                        s.getsockname()[0]))
-                    inputs.remove(s)
-                    outputs.remove(s)
-                    s.close()
+                    d = s.recv(1024).decode('utf-8')
 
+                    # Received message from client
+                    if d:
+                        try:
+                            msg = TCPGPIOMessage(d)
+                            print(msg)
+
+                        except TCPGPIOInvalidMessageError as err:
+                            logger.error('Invalid message {}'.format(d))
+                    # Client hung up
+                    else:
+                       logger.info('Client disconnect {}'.format(
+                           s.getsockname()[0]))
+                       inputs.remove(s)
+                       outputs.remove(s)
+                       s.close()
+
+        except Exception as err:
+            logger.critical('Error: {}'.format(err))
+            finalize()
+            sys.exit(1)
+
+    finalize()
+    sys.exit()

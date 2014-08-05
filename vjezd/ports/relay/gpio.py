@@ -124,6 +124,7 @@ class GPIORelay(BaseRelay):
         period = self.get_period(mode)
         logger.info('Activating relay in {} mode for {}s'.format(mode, period))
 
+        # TODO Raise PortWriteError?
         GPIO.output(self.pin, GPIO.HIGH)
         time.sleep(period)
         GPIO.output(self.pin, GPIO.LOW)

@@ -34,9 +34,15 @@ import socket
 import logging
 logger = logging.getLogger(__name__)
 
+from vjezd.ports import PortWriteError
 from vjezd.ports.relay.base import BaseRelay
 
 from tcpgpio import TCPGPIOMessage
+
+
+# Constants
+TIMEOUT = 5.0
+BUFFER_SIZE = 1024
 
 
 class TCPGPIORelayConfigError(Exception):
@@ -128,36 +134,53 @@ class TCPGPIORelay(BaseRelay):
         period = self.get_period(mode)
         logger.info('Activating relay in {} mode for {}s'.format(mode, period))
 
-        self.send('HIGH')
+        self._send_message(self.pin, 1)
         time.sleep(period)
-        self.send('LOW')
+        self._send_message(self.pin, 0)
 
 
-    def send(self, state):
-        """ Send TCPGPIO message.
+    def _send_message(self, pin, state):
+        """ Send TCPGPIO message to server and process reply or timeout.
         """
+
+        # Create message
+        value = TCPGPIOMessage.NONE
         if state == 1:
+            value = TCPGPIOMessage.HIGH
+        elif state == 0:
+            value = TCPGPIOMessage.LOW
+        msg = TCPGPIOMessage(TCPGPIOMessage.WRITE, pin, value)
 
-
-        msg = TCPGPIOMessage(TCPGPIOMessage.WRITE, self.pin
-
+        client = None
         try:
             # Connect to TCPGPIO server and send message
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.settimeout(TIMEOUT)
+
             client.connect((self.ip, self.port))
             logger.debug('Connected to server {}:{}'.format(self.ip,
-               self.port))
+                self.port))
 
+            # Send message
             logger.debug('Sending message: {}'.format(msg))
-            client.send(msg.encode('utf-8'))
+            client.send(repr(msg).encode('utf-8'))
+
+            # Wait for confirmation reply, if not received a socket timeout
+            # exception
+            data = client.recv(BUFFER_SIZE)
+            reply = TCPGPIOMessage(data.decode('utf-8'))
+
+            logger.debug('Received reply: {}'.format(reply))
 
             client.close()
             logger.debug('Disconnected')
 
-        except socket.error as err:
-            # Yield error but continue in operation
-            logger.error('Error connecting to TCPGPIO: {}! Ignoring'.format(
-                err))
+        except (socket.error, socket.timeout) as err:
+            logger.error('TCPGPIO network problem: {}! Ignoring'.format(err))
+            if client:
+                client.close()
+            # Raise port write error that should be handled by worker threads
+            raise PortWriteError('{}'.format(err))
 
 
 # Export port_class for port_factory()

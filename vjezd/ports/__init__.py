@@ -55,6 +55,18 @@ from vjezd import crit_exit
 from vjezd import conffile
 
 
+class PortWriteError(Exception):
+    """ Exception raised when port write operation fails.
+    """
+    pass
+
+
+class PortReadError(Exception):
+    """ Exception raised when port read operation fails.
+    """
+    pass
+
+
 # Stores port instances. Each port class can have only one instance.
 ports = {}
 
