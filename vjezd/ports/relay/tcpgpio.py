@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 from vjezd.ports.relay.base import BaseRelay
 
-#from tcpgpio import TCPGPIOMessage
+from tcpgpio import TCPGPIOMessage
 
 
 class TCPGPIORelayConfigError(Exception):
@@ -116,8 +116,11 @@ class TCPGPIORelay(BaseRelay):
             :param data string:     activation mode (print or scan)
         """
 
-        # Wait for configured delay
+        # Wait for configured delay or return in case the delay is < 0
         delay = self.get_delay(mode)
+        if delay < 0:
+            logger.warning('Delay set to < 0. Ommiting relay activation')
+            return
         logger.info('Waiting configured delay {} seconds'.format(delay))
         time.sleep(delay)
 
@@ -133,7 +136,10 @@ class TCPGPIORelay(BaseRelay):
     def send(self, state):
         """ Send TCPGPIO message.
         """
-        msg = '{},OUT,{}\n'.format(self.pin, state)
+        if state == 1:
+
+
+        msg = TCPGPIOMessage(TCPGPIOMessage.WRITE, self.pin
 
         try:
             # Connect to TCPGPIO server and send message

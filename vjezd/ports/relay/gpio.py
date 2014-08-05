@@ -40,7 +40,7 @@ from vjezd.ports.relay.base import BaseRelay
 
 
 class GPIORelayInvalidPinError(Exception):
-    """ Exception raised when an invalid pin number is configured.
+    """ An exception raised when invalid GPIO pin number is configured.
     """
 
 
@@ -112,8 +112,11 @@ class GPIORelay(BaseRelay):
             :param data string:     activation mode (print or scan)
         """
 
-        # Wait for configured delay
+        # Wait for configured delay or return in case the delay is < 0
         delay = self.get_delay(mode)
+        if delay < 0:
+            logger.warning('Delay set to < 0. Ommiting relay activation')
+            return
         logger.info('Waiting configured delay {} seconds'.format(delay))
         time.sleep(delay)
 
