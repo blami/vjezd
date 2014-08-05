@@ -209,8 +209,7 @@ APP_VER = __version__
 _server = None
 _exiting = False
 
-# Dictionary where devid is key and value is list of tuples in form (pin,
-# state)
+# Dictionary where pin is key to tuple of locking device and locking value
 _pin_locks = {}
 
 
@@ -403,41 +402,36 @@ if __name__ == '__main__':
                             # Exclusive write
                             elif msg.type == TCPGPIOMessage.XWRITE:
                                 # Check whether locked or not
-                                lock = None
-                                for p in _pin_locks.get(msg.devid) or ():
-                                    if p[0] == msg.pin:
-                                        locked = True
-                                        lock = p
+                                lock = _pin_locks.get(msg.pin)
+                                if lock:
+                                    locked = True
 
                                 if not locked:
                                     logger.debug('{} locks pin {}'.format(
                                         msg.devid, msg.pin))
-                                    p = _pin_locks.get(msg.devid)
-                                    if not p:
-                                        p = _pin_locks[msg.devid] = []
+                                    _pin_locks[msg.pin] = (msg.devid, msg.value)
 
-                                    lock = (msg.pin, msg.value)
-                                    p.append(lock)
                                     # Write to locked pin
                                     gpio_write(msg.pin, msg.value)
                                     # DON'T SET locked=True HERE AS WE WANT TO
                                     # SEND REPLY!
 
-                                elif locked and lock:
-                                    # When locked and msg.value is oposite to
-                                    # lock value then unlock
-                                    if (msg.value == TCPGPIOMessage.LOW and \
-                                        lock[1] == TCPGPIOMessage.HIGH) or ( \
+                                # Locked here implies we have lock
+                                elif locked and (
+                                        msg.value == TCPGPIOMessage.LOW and \
+                                        lock[1] == TCPGPIOMessage.HIGH \
+                                    ) or ( \
                                         msg.value == TCPGPIOMessage.HIGH and \
-                                        lock[1] == TCPGPIOMessage.LOW):
+                                        lock[1] == TCPGPIOMessage.LOW \
+                                    ):
 
-                                        logger.debug('{} unlocks pin {}'.format(
-                                            msg.devid, msg.pin))
-                                        # Write to unlocked pin
-                                        gpio_write(msg.pin, msg.value)
+                                    logger.debug('{} unlocks pin {}'.format(
+                                        msg.devid, msg.pin))
+                                    # Write to pin
+                                    gpio_write(msg.pin, msg.value)
 
-                                        _pin_locks.get(msg.devid).remove(lock)
-                                        locked = False
+                                    del _pin_locks[msg.pin]
+                                    locked = False
 
                             print(_pin_locks)
 
