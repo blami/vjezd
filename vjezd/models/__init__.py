@@ -26,7 +26,11 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-"""
+""" Database Model
+    **************
+
+    Application uses ORM to map rows in DB tables to a corresponding Python
+    objects.
 """
 
 # Import all models

@@ -26,7 +26,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-""" Exception Hours Model
+""" Exception Hours Table
     =====================
 """
 
@@ -44,19 +44,23 @@ from vjezd.db import Base
 
 
 class ExceptionHours(Base):
-    """ Exceptional opening hours. Devices will override their regular behavior
-        according to rules in this table.
+    """ **Exception_hours** table contains exceptional opening hour rules.
+        Devices will override their regular behavior according to rules in this
+        table.
 
-        If there's overlap in rules the highest identifier (newest rule) wins.
+        .. note:: If there's overlap in rules the highest identifier (newest
+            rule) wins.
 
-        :ivar id integer:           regular opening hours rule identifier
-        :ivar device string:        device on which the rule applies, None for
+        **Columns:**
+
+        :ivar integer id:           regular opening hours rule identifier
+        :ivar str device:           device on which the rule applies, None for
                                     any device
-        :ivar exception_date Date:  date of exception
-        :ivar exception_type string:type of exception, can be 'open' or
-                                    'closed'
-        :ivar time_start Time:      time of interval start
-        :ivar time_end Time:        time of interval end (use 24:00 for
+        :ivar Date exception_date:  date of exception
+        :ivar str exception_type:   type of exception, can be ``open`` or
+                                    ``closed``
+        :ivar Time time_start:      time of interval start
+        :ivar Time time_end:        time of interval end (use 24:00 for
                                     midnight)
 
     """
@@ -78,8 +82,8 @@ class ExceptionHours(Base):
     def check():
         """ Check whether currently are exception hours and device should act.
 
-            :return:                type of exception ('open' or 'closed') for
-                                    matching rule with highest identifier,
+            :return:                type of exception (``open`` or ``closed``)
+                                    for matching rule with highest identifier,
                                     otherwise None.
         """
         from vjezd import device as this_device

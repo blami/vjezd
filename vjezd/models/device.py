@@ -26,10 +26,6 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-""" Device Model
-    ============
-"""
-
 from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
@@ -42,22 +38,23 @@ from vjezd.db import Base
 
 
 class Device(Base):
-    """ Named device acting in either printer, scanner or both modes.
+    """ **Devices** table contains record about a device acting in either
+        printer, scanner or both modes.
 
-        Device records in table *devices* are created for informative purposes
-        and third party applications using same database. Each device is
-        expected to create/update its own record once initialized.
+        Device records in table **devices** are created for informative
+        purposes and third party applications using same database. Each device
+        is expected to create/update its own record once initialized.
 
         This table is considered to be read only. Any external changes will not
         be used in running instance (as it manages device internally) and will
         probably get overwriten during next startup.
 
-        Fields
-        ------
-        :ivar id string:            device identifier read from configuration
-        :ivar last__seen datetime:  timestamp of last update of record
-        :ivar last_mode enum:       last mode in which was device operating
-        :ivar last_ip string:       last IP address of device
+        **Columns:**
+
+        :ivar str id:               device identifier read from configuration
+        :ivar DateTime last__seen:  timestamp of last update of record
+        :ivar enum last_mode:       last mode in which was device operating
+        :ivar str last_ip:          last IP address of device
     """
 
     __tablename__ = 'devices'

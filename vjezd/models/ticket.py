@@ -26,10 +26,6 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-""" Ticket Model
-    ============
-"""
-
 import uuid
 from datetime import datetime, timedelta
 import logging
@@ -44,18 +40,21 @@ from vjezd.db import Base
 
 
 class Ticket(Base):
-    """ Ticket.
+    """ **Tickets** table contains all generated tickets including invalid,
+        expired od cancelled ones. Invalid tickets shouldn't be commited to DB.
 
-        :ivar id integer:           ticket identifier
-        :ivar code string:          code printed on ticket
-        :ivar created DateTime:     timestamp of ticket creation
-        :ivar created_device Device: reference to device where ticket was
+        **Columns:**
+
+        :ivar int id:               ticket identifier
+        :ivar str code:             code printed on ticket
+        :ivar DateTime created:     timestamp of ticket creation
+        :ivar Device created_device: reference to device where ticket was
                                     printed
-        :ivar used DateTime:        timestamp of ticket use
-        :ivar used_device Device:   reference to device where ticket was
+        :ivar DateTime used:        timestamp of ticket use
+        :ivar Device used_device:   reference to device where ticket was
                                     scanned and used
-        :ivar validity Interval:    interval of ticket validity
-        :ivar cancelled DateTime:   timestamp of ticket cancellation
+        :ivar Interval validity:    interval of ticket validity
+        :ivar DateTime cancelled:   timestamp of ticket cancellation
     """
 
     __tablename__ = 'tickets'

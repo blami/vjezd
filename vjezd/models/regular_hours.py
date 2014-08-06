@@ -26,7 +26,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-""" Regular Hours Model
+""" Regular Hours Table
     ===================
 """
 
@@ -44,20 +44,23 @@ from vjezd.db import Base
 
 
 class RegularHours(Base):
-    """ Regular opening hours. Devices will work in time intervals defined by
-        rules in this table.
+    """ **Regular_hours** table contains regular opening hour rules. Devices
+        will work in time intervals defined by rules in this table.
 
-        If there's overlap in rules the highest identifier (newest rule) wins.
+        .. note:: if there's overlap in rules the highest identifier (newest
+            rule) wins.
 
-        :ivar id integer:           regular opening hours rule identifier
-        :ivar device string:        device on which the rule applies, None for
+        **Columns:**
+
+        :ivar int id:               regular opening hours rule identifier
+        :ivar str device:           device on which the rule applies, None for
                                     any device
-        :ivar day_of_week integer:  day of week when rule applies:
+        :ivar int day_of_week:      day of week when rule applies:
                                     0..6-week days (from Mon to Sun),
                                     7-work days
                                     8-all days
-        :ivar time_start Time:      time of interval start
-        :ivar time_end Time:        time of interval end
+        :ivar Time time_start:      time of interval start
+        :ivar Time time_end:        time of interval end
     """
 
     __tablename__ = 'regular_hours'

@@ -55,6 +55,10 @@ from vjezd import crit_exit
 from vjezd import conffile
 
 
+# Base class for SQLAlchemy models
+Base = declarative_base()
+
+
 def init(factory=False):
     """ Initialize the database connection.
     """
@@ -80,9 +84,9 @@ def init(factory=False):
         autoflush=False,
         bind=engine))
 
-    # Create declarative Base class for models
     global Base
-    Base = declarative_base()
+    # Create declarative Base class for models
+    #Base = declarative_base()
     Base.query = session.query_property()
 
     try:

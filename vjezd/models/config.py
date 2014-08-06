@@ -26,20 +26,6 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-""" Config Model
-    ============
-
-    List of all supported configuration options:
-
-    Option                      Description
-    ==========================  ===============================================
-    validity                    ticket validity (minutes)
-    relay_print_delay           relay activation delay in print (seconds)
-    relay_scan_delay            relay activation delay in scan (seconds)
-    ticket_title                Title on ticket (e.g. device name)
-    ==========================  ===============================================
-"""
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -53,27 +39,40 @@ from vjezd.db import Base
 
 
 class Config(Base):
-    """ Global configuration option for one or more devices.
+    """ **Config** table contains global configuration options for one or more
+        devices.
 
-        Configuration option stored in the DB in *config* table is considered
+        Configuration option stored in the DB in **config** table is considered
         application-wide in opposite to option stored in device-local
         configuration file.
 
-        Each option consists of ''option'' name, its ''value'' and optionally
-        from a relation to ''device'' for which is option set.
+        List of all supported configuration options:
 
-        Theres a constraint on key ''option'', ''device'' but if device is NULL
+        ==========================  ===========================================
+        Option                      Description
+        ==========================  ===========================================
+        validity                    ticket validity (minutes)
+        relay_print_delay           relay activation delay in print (seconds)
+        relay_scan_delay            relay activation delay in scan (seconds)
+        ticket_title                Title on ticket (e.g. device name)
+        ==========================  ===========================================
+
+
+        Each option consists of ``option`` name, its ``value`` and optionally
+        from a relation to ``device`` for which is option set.
+
+        Theres a constraint on key ``option``, ``device`` but if device is NULL
         (which means that option is applicable for all devices) the unique does
         not take effect. In that case the option with highest identifier
         (latest one) has the highest priority and will be used.
 
         Please note that option names are case sensitive.
 
-        Columns
-        -------
-        :ivar option string:        option name
-        :ivar value string:         option value
-        :ivar device string:        foreign key to the Device record for which
+        **Columns:**
+
+        :ivar str option:           option name
+        :ivar str value:            option value
+        :ivar str device:           foreign key to the Device record for which
                                     is option set. If None, any device will
                                     match it.
     """
@@ -135,7 +134,7 @@ class Config(Base):
 
     @staticmethod
     def get_int(option, fallback=None):
-        """ Get option and coerce it into integer if possible. Otherwise return
+        """ Get option and coerce it into int if possible. Otherwise return
             fallback.
         """
         return int(Config.get(option, fallback))
