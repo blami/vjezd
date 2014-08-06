@@ -131,11 +131,12 @@ def port_factory(port_name):
     conf = conffile.get('ports', port_name, None)
     klass = None
     if conf:
-        conf = conf.split(':')
+        # Split class and configuration apart
+        conf = conf.split(':', 1)
         klass = conf[0]
         args = []
         if len(conf) > 1:
-            args = conf[1].split(',')
+            args = conf[1].split('|')
 
     if not klass:
         logger.info('Port {} is not configured. Skipping.'.format(port_name))
