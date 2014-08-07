@@ -29,7 +29,7 @@ Description=Vjezd
 After=network.target
 
 [Service]
-Environment=VENV_PATH=/opt/vjezd/venv-linux-armv6l
+Environment=VIRTUALENV_PATH=/opt/vjezd/venv-linux-armv6l
 ExecStart=/opt/vjezd/vjezd.py
 Restart=always
 
