@@ -136,7 +136,7 @@ def port_factory(port_name):
         klass = conf[0]
         args = []
         if len(conf) > 1:
-            args = conf[1].split('|')
+            args = conf[1].split(',')
 
     if not klass:
         logger.info('Port {} is not configured. Skipping.'.format(port_name))
