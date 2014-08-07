@@ -278,6 +278,7 @@ def gpio_write(pin, value):
         if value == TCPGPIOMessage.HIGH:
             gpio_value = GPIO.HIGH
         # Set level on given GPIO pin
+        gpio.setup(pin, GPIO.OUT)
         gpio.output(pin, gpio_value)
 
     logger.info('GPIO pin {} set to value {}'.format(pin, value))
@@ -286,7 +287,7 @@ def gpio_write(pin, value):
 # Application entry point
 if __name__ == '__main__':
 
-    # If VENV_PATH is set and points to virtualenv directory, activate it
+    # If VIRTUALENV_PATH is set and points to virtualenv directory, activate it
     virtualenv = os.getenv('VIRTUALENV_PATH')
     if virtualenv:
         print('info: running in virtualenv {}'.format(virtualenv))
@@ -357,7 +358,7 @@ if __name__ == '__main__':
 
     # Configure GPIO pin numbering
     if has_gpio:
-        GPIO.setup(GPIO.BOARD)
+        GPIO.setmode(GPIO.BOARD)
 
     # Configure TCP/IP server socket
     logger.debug('Opening socket')
