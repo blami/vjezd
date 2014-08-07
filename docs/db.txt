@@ -1,0 +1,5 @@
+
+.. automodule:: vjezd.models
+    :members: Config, Device, RegularHours, ExceptionHours, Ticket
+
+.. vim:set ft=rst:
