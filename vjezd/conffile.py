@@ -31,6 +31,47 @@
     Local configuration file stores any local device-specific configuration
     such as device identifier, logging settings or database connection
     settings.
+
+    Configuration file has a format of MS-DOS INI file and has following
+    sections:
+
+    Section [device]
+    ----------------
+    Contains configuration of given device and has following options:
+
+    ==============  ===========================================================
+    Option          Description
+    ==============  ===========================================================
+    id              Device unique identifier. Up to 8 alphanumeric characters.
+    mode            Operating mode. One of ``print``, ``scan``, ``both`` or
+                    ``auto``. In ``auto`` mode device will try to detect
+                    configured ports and choose mode according to them.
+    ==============  ===========================================================
+
+    Section [ports]
+    ---------------
+    Contains configuration of device ports. Ports are peripherals required to
+    operate one or more device modes. Configuration pair in this section has
+    format:
+
+    .. code-block::
+
+        port=class:arg1|arg2|argN...
+
+    Available ports are:
+
+    ==============  ===========================================================
+    Port            Description
+    ==============  ===========================================================
+    button          Button port used to trigger new ticket action in ``print``
+                    mode
+    relay           Relay port used to activate relay in both ``print`` and
+                    ``scan`` modes
+    printer         Printer port used to send ticket to configured printer
+    scanner         Scanner port used to read code from ticket
+    ==============  ===========================================================
+
+    Available classes and their configurations can be found
 """
 
 import os
