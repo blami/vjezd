@@ -9,13 +9,18 @@ Vjezd Documentation
 Installation
 ------------
 
-
-Development
------------
-
-Contents:
 .. toctree::
    :maxdepth: 2
+
+
+Usage
+-----
+
+.. toctree::
+    :maxdepth: 2
+
+    conffile
+    db
 
 
 
