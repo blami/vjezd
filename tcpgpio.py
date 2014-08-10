@@ -278,8 +278,8 @@ def gpio_write(pin, value):
         if value == TCPGPIOMessage.HIGH:
             gpio_value = GPIO.HIGH
         # Set level on given GPIO pin
-        gpio.setup(pin, GPIO.OUT)
-        gpio.output(pin, gpio_value)
+        GPIO.setup(pin, GPIO.OUT)
+        GPIO.output(pin, gpio_value)
 
     logger.info('GPIO pin {} set to value {}'.format(pin, value))
 
