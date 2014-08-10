@@ -32,6 +32,7 @@ After=network.target
 Environment=VIRTUALENV_PATH=/opt/vjezd/venv-linux-armv6l
 ExecStart=/opt/vjezd/tcpgpio.py
 Restart=always
+RestartSec=3600
 
 [Install]
 WantedBy=default.target
