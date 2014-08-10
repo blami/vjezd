@@ -298,9 +298,9 @@ EOF
 # Generate /etc/interfaces file
 if ! [ -z $conf_ip ]; then
 	# Static address
-	[ ! -z "$conf_port_button" ] && conf_port_button="button=$conf_port_button"
-	[ ! -z "$conf_port_printer" ] && conf_port_button="printer=$conf_port_printer"
-	[ ! -z "$conf_port_relay" ] && conf_port_button="relay=$conf_port_relay"
+	[ ! -z "$conf_ip" ] && conf_ip="address $conf_ip"
+	[ ! -z "$conf_netmask" ] && conf_netmask="netmask $conf_netmask"
+	[ ! -z "$conf_gateway" ] && conf_gateway="gateway $conf_gateway"
 
 	read -d '' IFACES_FILE << EOF
 auto lo
